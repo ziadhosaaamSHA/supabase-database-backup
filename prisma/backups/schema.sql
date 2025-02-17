@@ -162,7 +162,7 @@ BEGIN
     FOR invoice IN
         SELECT id, total_amount, amount_paid
         FROM invoices
-        WHERE brand_id = brand_id
+        WHERE brand_id = brand_id  -- This should be the parameter
         AND status IN ('pending', 'partially_paid')
         ORDER BY created_at ASC
     LOOP
@@ -175,7 +175,7 @@ BEGIN
         IF remaining_amount >= (invoice.total_amount - invoice.amount_paid) THEN
             -- Full payment for this invoice
             INSERT INTO invoice_payments (invoice_id, payment_id, amount, created_at)
-            VALUES (invoice.id, payment_id, invoice.total_amount - invoice.amount_paid, NOW());
+            VALUES (invoice.id, payment_id, invoice.total_amount - invoice.amount_paid, CURRENT_TIMESTAMP);
 
             -- Mark invoice as completed
             UPDATE invoices 
@@ -187,11 +187,15 @@ BEGIN
         ELSE
             -- Partial payment for this invoice
             INSERT INTO invoice_payments (invoice_id, payment_id, amount, created_at)
-            VALUES (invoice.id, payment_id, remaining_amount, NOW());
+            VALUES (invoice.id, payment_id, remaining_amount, CURRENT_TIMESTAMP);
 
             -- Update remaining invoice amount
             UPDATE invoices 
-            SET amount_paid = amount_paid + remaining_amount, status = 'partially_paid'
+            SET amount_paid = amount_paid + remaining_amount,
+                status = CASE 
+                            WHEN amount_paid + remaining_amount >= total_amount THEN 'paid' 
+                            ELSE 'partially_paid' 
+                         END
             WHERE id = invoice.id;
 
             -- Set remaining amount to 0 (payment fully used)
@@ -740,6 +744,138 @@ $$;
 ALTER FUNCTION "public"."generate_and_link_weekly_invoices"() OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."generate_invoices_in_zoho_books"() RETURNS "void"
+    LANGUAGE "plpgsql"
+    AS $$
+DECLARE
+    invoice_record RECORD;
+    brand_record RECORD;
+    api_response JSONB;
+    zoho_api_key TEXT;
+    zoho_organization_id TEXT;
+    zoho_api_url TEXT := 'https://books.zoho.in/api/v3/invoices';  -- Updated URL for Zoho India
+BEGIN
+    -- Fetch Zoho Books API credentials from Vault
+    SELECT decrypted_secret INTO zoho_api_key 
+    FROM vault.decrypted_secrets 
+    WHERE name = 'ZOHO_API_KEY';
+
+    IF zoho_api_key IS NULL THEN
+        RAISE EXCEPTION 'Zoho API Key not found in vault';
+    END IF;
+
+    SELECT decrypted_secret INTO zoho_organization_id 
+    FROM vault.decrypted_secrets 
+    WHERE name = 'ZOHO_ORGANIZATION_ID';
+
+    IF zoho_organization_id IS NULL THEN
+        RAISE EXCEPTION 'Zoho Organization ID not found in vault';
+    END IF;
+
+    -- Loop through all invoices that need to be generated
+    FOR invoice_record IN 
+        SELECT id, brand_id, invoice_number, total_amount, gst_amount, subtotal, issued_at, due_date 
+        FROM public.invoices 
+        WHERE status = 'pending'  -- Assuming 'pending' means it needs to be generated
+        ORDER BY created_at
+    LOOP
+        -- Fetch brand details for the invoice
+        SELECT * INTO brand_record 
+        FROM public.brand_profiles 
+        WHERE id = invoice_record.brand_id;
+
+        -- Make API request to Zoho Books to create an invoice
+        BEGIN
+            api_response := (
+                SELECT pg_net.http_post(
+                    url := zoho_api_url,
+                    headers := jsonb_build_object(
+                        'Authorization', 'Zoho-oauthtoken ' || zoho_api_key,
+                        'Content-Type', 'application/json',
+                        'X-com-zoho-books-organizationid', zoho_organization_id
+                    ),
+                    body := jsonb_build_object(
+                        'customer_id', brand_record.zoho_books_id,  -- Use the Zoho Books ID from brand_profiles
+                        'line_items', jsonb_build_array(
+                            jsonb_build_object(
+                                'item_id', 'ITEM_ID',  -- Replace with actual item ID or logic to fetch it
+                                'quantity', 1,
+                                'rate', invoice_record.total_amount,
+                                'description', 'Invoice for ' || invoice_record.invoice_number
+                            )
+                        ),
+                        'total', invoice_record.total_amount,
+                        'gst_amount', invoice_record.gst_amount,
+                        'issued_at', invoice_record.issued_at,
+                        'due_date', invoice_record.due_date
+                    )::TEXT
+                )
+            );
+
+            -- Check for API response errors
+            IF api_response->>'code' IS NOT NULL THEN
+                -- Mark invoice as failed due to API error
+                UPDATE public.invoices
+                SET status = 'failed', 
+                    failure_reason = api_response->>'message',
+                    last_retry_at = CURRENT_TIMESTAMP
+                WHERE id = invoice_record.id;
+
+                -- Log failure in audit logs
+                INSERT INTO public.audit_logs (user_id, action, details, created_at)
+                VALUES (
+                    brand_record.id,  -- Assuming user_id is the brand ID for logging
+                    'INVOICE_GENERATION_FAILED',
+                    'Invoice generation failed for invoice ID ' || invoice_record.id || ' - API error: ' || api_response->>'message',
+                    CURRENT_TIMESTAMP
+                );
+
+                CONTINUE;
+            END IF;
+
+        EXCEPTION
+            WHEN OTHERS THEN
+                -- Handle any unexpected errors
+                UPDATE public.invoices
+                SET status = 'failed', 
+                    failure_reason = 'Unexpected error: ' || SQLERRM,
+                    last_retry_at = CURRENT_TIMESTAMP
+                WHERE id = invoice_record.id;
+
+                INSERT INTO public.audit_logs (user_id, action, details, created_at)
+                VALUES (
+                    brand_record.id,  -- Assuming user_id is the brand ID for logging
+                    'INVOICE_GENERATION_FAILED',
+                    'Invoice generation failed for invoice ID ' || invoice_record.id || ' - Unexpected error: ' || SQLERRM,
+                    CURRENT_TIMESTAMP
+                );
+
+                CONTINUE;
+        END;
+
+        -- Update invoice status to 'generated' or any other status as needed
+        UPDATE public.invoices
+        SET status = 'generated', 
+            zoho_invoice_id = api_response->>'id'  -- Store the Zoho invoice ID
+        WHERE id = invoice_record.id;
+
+        -- Log successful invoice generation
+        INSERT INTO public.audit_logs (user_id, action, details, created_at)
+        VALUES (
+            brand_record.id,  -- Assuming user_id is the brand ID for logging
+            'INVOICE_GENERATED',
+            'Successfully generated invoice ID ' || invoice_record.id,
+            CURRENT_TIMESTAMP
+        );
+
+    END LOOP;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."generate_invoices_in_zoho_books"() OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."handle_combined_payout_notifications"("enrollment_id" bigint, "amount" numeric, "status" "text", "failure_reason" "text" DEFAULT NULL::"text") RETURNS "void"
     LANGUAGE "plpgsql"
     AS $$
@@ -1227,14 +1363,28 @@ DECLARE
     payout_destination TEXT;
     payout_account_number TEXT;
     payout_ifsc TEXT;
+    razorpay_api_url TEXT := 'https://api.razorpay.com/v1/payouts';  -- Store URL in a variable
 BEGIN
     -- Fetch Razorpay API credentials from Vault
-    SELECT secret INTO razorpay_api_key FROM vault.secrets WHERE name = 'RAZORPAY_API_KEY';
-    SELECT secret INTO razorpay_account_number FROM vault.secrets WHERE name = 'RAZORPAY_ACCOUNT_NUMBER';
+    SELECT decrypted_secret INTO razorpay_api_key 
+    FROM vault.decrypted_secrets 
+    WHERE name = 'RAZORPAY_API_KEY';
+
+    IF razorpay_api_key IS NULL THEN
+        RAISE EXCEPTION 'Razorpay API Key not found in vault';
+    END IF;
+
+    SELECT decrypted_secret INTO razorpay_account_number 
+    FROM vault.decrypted_secrets 
+    WHERE name = 'RAZORPAY_ACCOUNT_NUMBER';
+
+    IF razorpay_account_number IS NULL THEN
+        RAISE EXCEPTION 'Razorpay Account Number not found in vault';
+    END IF;
 
     -- Loop through all payouts that have status 'initiated'
     FOR payout_record IN 
-        SELECT * FROM public.payouts 
+        SELECT id, shopper_id, enrollment_id, amount FROM public.payouts 
         WHERE payout_status = 'initiated'
         ORDER BY created_at
     LOOP
@@ -1257,7 +1407,7 @@ BEGIN
             UPDATE public.payouts
             SET payout_status = 'failed', 
                 failure_reason = 'Missing payout details',
-                last_retry_at = NOW()
+                last_retry_at = CURRENT_TIMESTAMP
             WHERE id = payout_record.id;
 
             -- Log failure in audit logs
@@ -1266,51 +1416,92 @@ BEGIN
                 payout_record.shopper_id,
                 'PAYOUT_FAILED',
                 'Payout failed for enrollment ' || payout_record.enrollment_id || ' - Missing payout details',
-                NOW()
+                CURRENT_TIMESTAMP
             );
             
             CONTINUE;
         END IF;
 
         -- Make API request to Razorpay X
-        api_response := (
-            SELECT pg_net.http_post(
-                url := 'https://api.razorpay.com/v1/payouts',
-                headers := jsonb_build_object(
-                    'Authorization', 'Basic ' || encode(razorpay_api_key::bytea, 'base64'),
-                    'Content-Type', 'application/json'
-                ),
-                body := jsonb_build_object(
-                    'account_number', razorpay_account_number,
-                    'amount', payout_record.amount * 100,  -- Convert to paise
-                    'currency', 'INR',
-                    'mode', payout_method, -- Either UPI or Bank Transfer
-                    'purpose', 'payout',
-                    'queue_if_low_balance', true,
-                    'fund_account', 
-                        CASE 
-                            WHEN payout_method = 'upi' THEN 
-                                jsonb_build_object(
-                                    'account_type', 'vpa',
-                                    'vpa', jsonb_build_object(
-                                        'address', payout_destination
+        BEGIN
+            api_response := (
+                SELECT pg_net.http_post(
+                    url := razorpay_api_url,
+                    headers := jsonb_build_object(
+                        'Authorization', 'Basic ' || encode(razorpay_api_key::bytea, 'base64'),
+                        'Content-Type', 'application/json'
+                    ),
+                    body := jsonb_build_object(
+                        'account_number', razorpay_account_number,
+                        'amount', payout_record.amount * 100,  -- Convert to paise
+                        'currency', 'INR',
+                        'mode', payout_method, -- Either UPI or Bank Transfer
+                        'purpose', 'payout',
+                        'queue_if_low_balance', true,
+                        'fund_account', 
+                            CASE 
+                                WHEN payout_method = 'upi' THEN 
+                                    jsonb_build_object(
+                                        'account_type', 'vpa',
+                                        'vpa', jsonb_build_object(
+                                            'address', payout_destination
+                                        )
                                     )
-                                )
-                            WHEN payout_method = 'bank_transfer' THEN 
-                                jsonb_build_object(
-                                    'account_type', 'bank_account',
-                                    'bank_account', jsonb_build_object(
-                                        'account_number', payout_account_number,
-                                        'ifsc', payout_ifsc
+                                WHEN payout_method = 'bank_transfer' THEN 
+                                    jsonb_build_object(
+                                        'account_type', 'bank_account',
+                                        'bank_account', jsonb_build_object(
+                                            'account_number', payout_account_number,
+                                            'ifsc', payout_ifsc
+                                        )
                                     )
-                                )
-                        END
-                )::TEXT
-            )
-        );
+                            END
+                    )::TEXT
+                )
+            );
 
-        -- **DO NOT** update payout_status here. Webhook will update it.
-        -- Just store the Razorpay payout ID for tracking.
+            -- Check for API response errors
+            IF api_response->>'error' IS NOT NULL THEN
+                -- Mark payout as failed due to API error
+                UPDATE public.payouts
+                SET payout_status = 'failed', 
+                    failure_reason = api_response->>'error',
+                    last_retry_at = CURRENT_TIMESTAMP
+                WHERE id = payout_record.id;
+
+                -- Log failure in audit logs
+                INSERT INTO public.audit_logs (user_id, action, details, created_at)
+                VALUES (
+                    payout_record.shopper_id,
+                    'PAYOUT_FAILED',
+                    'Payout failed for enrollment ' || payout_record.enrollment_id || ' - API error: ' || api_response->>'error',
+                    CURRENT_TIMESTAMP
+                );
+
+                CONTINUE;
+            END IF;
+
+        EXCEPTION
+            WHEN OTHERS THEN
+                -- Handle any unexpected errors
+                UPDATE public.payouts
+                SET payout_status = 'failed', 
+                    failure_reason = 'Unexpected error: ' || SQLERRM,
+                    last_retry_at = CURRENT_TIMESTAMP
+                WHERE id = payout_record.id;
+
+                INSERT INTO public.audit_logs (user_id, action, details, created_at)
+                VALUES (
+                    payout_record.shopper_id,
+                    'PAYOUT_FAILED',
+                    'Payout failed for enrollment ' || payout_record.enrollment_id || ' - Unexpected error: ' || SQLERRM,
+                    CURRENT_TIMESTAMP
+                );
+
+                CONTINUE;
+        END;
+
+        -- Store the Razorpay payout ID for tracking
         UPDATE public.payouts
         SET razorpay_payout_id = api_response->>'id'
         WHERE id = payout_record.id;
@@ -1321,7 +1512,7 @@ BEGIN
             payout_record.shopper_id,
             'PAYOUT_ATTEMPT',
             'Initiated payout for enrollment ' || payout_record.enrollment_id || ' - Razorpay Payout ID: ' || api_response->>'id',
-            NOW()
+            CURRENT_TIMESTAMP
         );
 
     END LOOP;
@@ -1368,6 +1559,163 @@ $$;
 
 ALTER FUNCTION "public"."retry_failed_payouts_on_payment_update"() OWNER TO "postgres";
 
+
+CREATE OR REPLACE FUNCTION "public"."sync_invoice_status_from_zoho"("zoho_invoice_id" "text", "new_status" "text") RETURNS "void"
+    LANGUAGE "plpgsql"
+    AS $$
+DECLARE
+    invoice_record RECORD;
+BEGIN
+    -- Fetch the invoice associated with the Zoho invoice ID
+    SELECT * INTO invoice_record
+    FROM public.invoices
+    WHERE zoho_invoice_id = zoho_invoice_id;
+
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'Invoice not found for Zoho invoice ID %', zoho_invoice_id;
+    END IF;
+
+    -- Update the invoice status based on the new status from Zoho Books
+    UPDATE public.invoices
+    SET status = new_status,
+        last_updated = CURRENT_TIMESTAMP  -- Assuming there's a last_updated column
+    WHERE id = invoice_record.id;
+
+    -- Log the status change in audit logs
+    INSERT INTO public.audit_logs (user_id, action, details, created_at)
+    VALUES (
+        invoice_record.brand_id,  -- Assuming user_id is the brand ID for logging
+        'INVOICE_STATUS_SYNCED',
+        'Invoice ID ' || invoice_record.id || ' status updated to ' || new_status || ' from Zoho Books.',
+        CURRENT_TIMESTAMP
+    );
+
+END;
+$$;
+
+
+ALTER FUNCTION "public"."sync_invoice_status_from_zoho"("zoho_invoice_id" "text", "new_status" "text") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."trigger_generate_invoices"() RETURNS "trigger"
+    LANGUAGE "plpgsql"
+    AS $$
+DECLARE
+    api_response JSONB;
+    zoho_api_key TEXT;
+    zoho_organization_id TEXT;
+    zoho_api_url TEXT := 'https://books.zoho.in/api/v3/invoices';  -- URL for Zoho India
+BEGIN
+    -- Fetch Zoho Books API credentials from Vault
+    SELECT decrypted_secret INTO zoho_api_key 
+    FROM vault.decrypted_secrets 
+    WHERE name = 'ZOHO_API_KEY';
+
+    IF zoho_api_key IS NULL THEN
+        RAISE EXCEPTION 'Zoho API Key not found in vault';
+    END IF;
+
+    SELECT decrypted_secret INTO zoho_organization_id 
+    FROM vault.decrypted_secrets 
+    WHERE name = 'ZOHO_ORGANIZATION_ID';
+
+    IF zoho_organization_id IS NULL THEN
+        RAISE EXCEPTION 'Zoho Organization ID not found in vault';
+    END IF;
+
+    -- Make API request to Zoho Books to create an invoice
+    BEGIN
+        api_response := (
+            SELECT pg_net.http_post(
+                url := zoho_api_url,
+                headers := jsonb_build_object(
+                    'Authorization', 'Zoho-oauthtoken ' || zoho_api_key,
+                    'Content-Type', 'application/json',
+                    'X-com-zoho-books-organizationid', zoho_organization_id
+                ),
+                body := jsonb_build_object(
+                    'customer_id', (SELECT zoho_books_id FROM public.brand_profiles WHERE id = NEW.brand_id),  -- Use the Zoho Books ID from brand_profiles
+                    'line_items', jsonb_build_array(
+                        jsonb_build_object(
+                            'item_id', 'ITEM_ID',  -- Replace with actual item ID or logic to fetch it
+                            'quantity', 1,
+                            'rate', NEW.total_amount,
+                            'description', 'Invoice for ' || NEW.invoice_number
+                        )
+                    ),
+                    'total', NEW.total_amount,
+                    'gst_amount', NEW.gst_amount,
+                    'tds_percentage', NEW.tds_percentage,  -- Include TDS percentage
+                    'tds_amount', NEW.tds_amount,          -- Include TDS amount
+                    'issued_at', NEW.issued_at,
+                    'due_date', NEW.due_date
+                )::TEXT
+            )
+        );
+
+        -- Check for API response errors
+        IF api_response->>'code' IS NOT NULL THEN
+            -- Mark invoice as failed due to API error
+            UPDATE public.invoices
+            SET status = 'failed', 
+                failure_reason = api_response->>'message',
+                last_retry_at = CURRENT_TIMESTAMP
+            WHERE id = NEW.id;
+
+            -- Log failure in audit logs
+            INSERT INTO public.audit_logs (user_id, action, details, created_at)
+            VALUES (
+                NEW.brand_id,  -- Assuming user_id is the brand ID for logging
+                'INVOICE_GENERATION_FAILED',
+                'Invoice generation failed for invoice ID ' || NEW.id || ' - API error: ' || api_response->>'message',
+                CURRENT_TIMESTAMP
+            );
+
+            RETURN NEW;  -- Exit the trigger function
+        END IF;
+
+    EXCEPTION
+        WHEN OTHERS THEN
+            -- Handle any unexpected errors
+            UPDATE public.invoices
+            SET status = 'failed', 
+                failure_reason = 'Unexpected error: ' || SQLERRM,
+                last_retry_at = CURRENT_TIMESTAMP
+            WHERE id = NEW.id;
+
+            INSERT INTO public.audit_logs (user_id, action, details, created_at)
+            VALUES (
+                NEW.brand_id,  -- Assuming user_id is the brand ID for logging
+                'INVOICE_GENERATION_FAILED',
+                'Invoice generation failed for invoice ID ' || NEW.id || ' - Unexpected error: ' || SQLERRM,
+                CURRENT_TIMESTAMP
+            );
+
+            RETURN NEW;  -- Exit the trigger function
+    END;
+
+    -- Update invoice status to 'generated' or any other status as needed
+    UPDATE public.invoices
+    SET status = 'generated', 
+        zoho_invoice_id = api_response->>'id'  -- Store the Zoho invoice ID
+    WHERE id = NEW.id;
+
+    -- Log successful invoice generation
+    INSERT INTO public.audit_logs (user_id, action, details, created_at)
+    VALUES (
+        NEW.brand_id,  -- Assuming user_id is the brand ID for logging
+        'INVOICE_GENERATED',
+        'Successfully generated invoice ID ' || NEW.id,
+        CURRENT_TIMESTAMP
+    );
+
+    RETURN NEW;  -- Return the new record
+END;
+$$;
+
+
+ALTER FUNCTION "public"."trigger_generate_invoices"() OWNER TO "postgres";
+
 SET default_tablespace = '';
 
 SET default_table_access_method = "heap";
@@ -1383,7 +1731,6 @@ CREATE TABLE IF NOT EXISTS "public"."admin_profiles" (
     "role" "public"."admin_role" NOT NULL,
     "created_at" timestamp without time zone DEFAULT "now"(),
     "profile_id" bigint,
-    "onboarding_completed" boolean DEFAULT false NOT NULL,
     CONSTRAINT "admin_profiles_email_check" CHECK (("email" ~ '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$'::"text")),
     CONSTRAINT "admin_profiles_phone_number_check" CHECK (("phone_number" ~ '^[0-9]{10}$'::"text"))
 );
@@ -1426,7 +1773,6 @@ CREATE TABLE IF NOT EXISTS "public"."brand_profiles" (
     "zoho_books_id" "text",
     "created_at" timestamp without time zone DEFAULT "now"(),
     "profile_id" bigint,
-    "onboarding_completed" boolean DEFAULT false NOT NULL,
     "admin_approved" boolean DEFAULT false NOT NULL,
     "tds_rate" numeric(5,2) DEFAULT 0 NOT NULL,
     CONSTRAINT "brand_profiles_accounts_email_check" CHECK (("accounts_email" ~ '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$'::"text")),
@@ -1683,6 +2029,7 @@ CREATE TABLE IF NOT EXISTS "public"."enrollments" (
     "is_invoiced" boolean DEFAULT false NOT NULL,
     "status" "public"."enrollment_status" DEFAULT 'pending'::"public"."enrollment_status" NOT NULL,
     "rejection_count" integer DEFAULT 0 NOT NULL,
+    "brand_id" bigint,
     CONSTRAINT "enrollments_bonus_amount_check" CHECK (("bonus_amount" >= (0)::numeric)),
     CONSTRAINT "enrollments_coupon_adjustment_check" CHECK (("coupon_adjustment" >= (0)::numeric)),
     CONSTRAINT "enrollments_deduction_amount_check" CHECK (("deduction_amount" >= (0)::numeric)),
@@ -1788,6 +2135,30 @@ ALTER TABLE "public"."invoices" OWNER TO "postgres";
 
 ALTER TABLE "public"."invoices" ALTER COLUMN "id" ADD GENERATED ALWAYS AS IDENTITY (
     SEQUENCE NAME "public"."invoices_id_seq"
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
+
+
+CREATE TABLE IF NOT EXISTS "public"."items" (
+    "id" bigint NOT NULL,
+    "name" "text" NOT NULL,
+    "description" "text",
+    "price" numeric(10,2) NOT NULL,
+    "gst_rate" numeric(5,2) DEFAULT 0 NOT NULL,
+    "created_at" timestamp without time zone DEFAULT "now"()
+);
+
+
+ALTER TABLE "public"."items" OWNER TO "postgres";
+
+
+ALTER TABLE "public"."items" ALTER COLUMN "id" ADD GENERATED ALWAYS AS IDENTITY (
+    SEQUENCE NAME "public"."items_id_seq"
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
@@ -2002,6 +2373,7 @@ CREATE TABLE IF NOT EXISTS "public"."users" (
     "user_type" "text" NOT NULL,
     "created_at" timestamp with time zone DEFAULT "now"(),
     "status" "public"."user_status" DEFAULT 'active'::"public"."user_status" NOT NULL,
+    "onboarding_completed" boolean DEFAULT false NOT NULL,
     CONSTRAINT "profiles_user_type_check" CHECK (("user_type" = ANY (ARRAY['shopper'::"text", 'brand'::"text", 'admin'::"text"])))
 );
 
@@ -2113,7 +2485,6 @@ CREATE TABLE IF NOT EXISTS "public"."shopper_profiles" (
     "upi_id" "text",
     "created_at" timestamp without time zone DEFAULT "now"(),
     "profile_id" bigint,
-    "onboarding_completed" boolean DEFAULT false NOT NULL,
     CONSTRAINT "shopper_profiles_bank_account_number_check" CHECK (("bank_account_number" ~ '^[0-9]{9,18}$'::"text")),
     CONSTRAINT "shopper_profiles_dob_check" CHECK (("dob" <= (CURRENT_DATE - '18 years'::interval))),
     CONSTRAINT "shopper_profiles_ifsc_code_check" CHECK (("ifsc_code" ~ '^[A-Z]{4}0[A-Z0-9]{6}$'::"text")),
@@ -2331,6 +2702,16 @@ ALTER TABLE ONLY "public"."invoices"
 
 
 
+ALTER TABLE ONLY "public"."items"
+    ADD CONSTRAINT "items_name_key" UNIQUE ("name");
+
+
+
+ALTER TABLE ONLY "public"."items"
+    ADD CONSTRAINT "items_pkey" PRIMARY KEY ("id");
+
+
+
 ALTER TABLE ONLY "public"."notification_preferences"
     ADD CONSTRAINT "notification_preferences_pkey" PRIMARY KEY ("id");
 
@@ -2469,6 +2850,10 @@ CREATE INDEX "idx_shopper_id" ON "public"."payouts" USING "btree" ("shopper_id")
 
 
 
+CREATE OR REPLACE TRIGGER "after_invoice_insert" AFTER INSERT ON "public"."invoices" FOR EACH ROW EXECUTE FUNCTION "public"."trigger_generate_invoices"();
+
+
+
 CREATE OR REPLACE TRIGGER "enforce_brand_approval" BEFORE INSERT OR UPDATE ON "public"."campaigns" FOR EACH ROW EXECUTE FUNCTION "public"."check_brand_approval"();
 
 
@@ -2575,11 +2960,6 @@ ALTER TABLE ONLY "public"."enrollments"
 
 
 
-ALTER TABLE ONLY "public"."enrollments"
-    ADD CONSTRAINT "enrollments_shopper_id_fkey" FOREIGN KEY ("shopper_id") REFERENCES "public"."shopper_profiles"("id") ON DELETE CASCADE;
-
-
-
 ALTER TABLE ONLY "public"."invoices"
     ADD CONSTRAINT "fk_brand_id" FOREIGN KEY ("brand_id") REFERENCES "public"."brand_profiles"("id") ON DELETE CASCADE;
 
@@ -2597,6 +2977,11 @@ ALTER TABLE ONLY "public"."payouts"
 
 ALTER TABLE ONLY "public"."invoice_enrollments"
     ADD CONSTRAINT "fk_enrollment_id" FOREIGN KEY ("enrollment_id") REFERENCES "public"."enrollments"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."enrollments"
+    ADD CONSTRAINT "fk_enrollments_brand" FOREIGN KEY ("brand_id") REFERENCES "public"."brand_profiles"("id") ON DELETE CASCADE;
 
 
 
@@ -2697,6 +3082,466 @@ ALTER TABLE ONLY "public"."razorpay_x_webhooks"
 
 ALTER TABLE ONLY "public"."shopper_profiles"
     ADD CONSTRAINT "shopper_profiles_profile_id_fkey" FOREIGN KEY ("profile_id") REFERENCES "public"."users"("id") ON DELETE CASCADE;
+
+
+
+CREATE POLICY "Allow admins to approve campaigns" ON "public"."campaigns" FOR UPDATE TO "authenticated" USING (("auth"."role"() = 'admin'::"text")) WITH CHECK (("auth"."role"() = 'admin'::"text"));
+
+
+
+CREATE POLICY "Allow admins to delete any campaign" ON "public"."campaigns" FOR DELETE TO "authenticated" USING (("auth"."role"() = 'admin'::"text"));
+
+
+
+CREATE POLICY "Allow admins to delete any coupon" ON "public"."coupons" FOR DELETE TO "authenticated" USING (("auth"."role"() = 'admin'::"text"));
+
+
+
+CREATE POLICY "Allow admins to delete any deliverable" ON "public"."deliverables" FOR DELETE TO "authenticated" USING (("auth"."role"() = 'admin'::"text"));
+
+
+
+CREATE POLICY "Allow admins to delete any payment" ON "public"."payments" FOR DELETE TO "authenticated" USING (("auth"."role"() = 'admin'::"text"));
+
+
+
+CREATE POLICY "Allow admins to insert profiles" ON "public"."admin_profiles" FOR INSERT TO "authenticated" WITH CHECK (("profile_id" = ( SELECT "users"."id"
+   FROM "public"."users"
+  WHERE ("users"."auth_user_id" = "auth"."uid"()))));
+
+
+
+CREATE POLICY "Allow admins to update any campaign image" ON "public"."campaign_images" FOR UPDATE TO "authenticated" USING (("auth"."role"() = 'admin'::"text")) WITH CHECK (("auth"."role"() = 'admin'::"text"));
+
+
+
+CREATE POLICY "Allow admins to update any coupon" ON "public"."coupons" FOR UPDATE TO "authenticated" USING (("auth"."role"() = 'admin'::"text")) WITH CHECK (("auth"."role"() = 'admin'::"text"));
+
+
+
+CREATE POLICY "Allow admins to update any deliverable" ON "public"."deliverables" FOR UPDATE TO "authenticated" USING (("auth"."role"() = 'admin'::"text")) WITH CHECK (("auth"."role"() = 'admin'::"text"));
+
+
+
+CREATE POLICY "Allow admins to update any invoice enrollment" ON "public"."invoice_enrollments" FOR UPDATE TO "authenticated" USING (("auth"."role"() = 'admin'::"text")) WITH CHECK (("auth"."role"() = 'admin'::"text"));
+
+
+
+CREATE POLICY "Allow admins to update any payout" ON "public"."payouts" FOR UPDATE TO "authenticated" USING (("auth"."role"() = 'admin'::"text")) WITH CHECK (("auth"."role"() = 'admin'::"text"));
+
+
+
+CREATE POLICY "Allow admins to update any product" ON "public"."products" FOR UPDATE TO "authenticated" USING (("auth"."role"() = 'admin'::"text")) WITH CHECK (("auth"."role"() = 'admin'::"text"));
+
+
+
+CREATE POLICY "Allow admins to update any profile" ON "public"."brand_profiles" FOR UPDATE TO "authenticated" USING (("auth"."role"() = 'admin'::"text")) WITH CHECK (("auth"."role"() = 'admin'::"text"));
+
+
+
+CREATE POLICY "Allow admins to update their own profiles" ON "public"."admin_profiles" FOR UPDATE TO "authenticated" USING (("profile_id" = ( SELECT "users"."id"
+   FROM "public"."users"
+  WHERE ("users"."auth_user_id" = "auth"."uid"())))) WITH CHECK (("profile_id" = ( SELECT "users"."id"
+   FROM "public"."users"
+  WHERE ("users"."auth_user_id" = "auth"."uid"()))));
+
+
+
+CREATE POLICY "Allow admins to view all Razorpay X webhooks" ON "public"."razorpay_x_webhooks" FOR SELECT TO "authenticated" USING (("auth"."role"() = 'admin'::"text"));
+
+
+
+CREATE POLICY "Allow admins to view all ZeptoMail webhooks" ON "public"."zeptomail_webhooks" FOR SELECT TO "authenticated" USING (("auth"."role"() = 'admin'::"text"));
+
+
+
+CREATE POLICY "Allow admins to view all brand profiles" ON "public"."brand_profiles" FOR SELECT TO "authenticated" USING (("auth"."role"() = 'admin'::"text"));
+
+
+
+CREATE POLICY "Allow admins to view all campaign images" ON "public"."campaign_images" FOR SELECT TO "authenticated" USING (("auth"."role"() = 'admin'::"text"));
+
+
+
+CREATE POLICY "Allow admins to view all campaigns" ON "public"."campaigns" FOR SELECT TO "authenticated" USING (("auth"."role"() = 'admin'::"text"));
+
+
+
+CREATE POLICY "Allow admins to view all coupon redemptions" ON "public"."coupon_redemptions" FOR SELECT TO "authenticated" USING (("auth"."role"() = 'admin'::"text"));
+
+
+
+CREATE POLICY "Allow admins to view all coupons" ON "public"."coupons" FOR SELECT TO "authenticated" USING (("auth"."role"() = 'admin'::"text"));
+
+
+
+CREATE POLICY "Allow admins to view all deliverable submissions" ON "public"."deliverable_submissions" FOR SELECT TO "authenticated" USING (("auth"."role"() = 'admin'::"text"));
+
+
+
+CREATE POLICY "Allow admins to view all deliverables" ON "public"."deliverables" FOR SELECT TO "authenticated" USING (("auth"."role"() = 'admin'::"text"));
+
+
+
+CREATE POLICY "Allow admins to view all invoice enrollments" ON "public"."invoice_enrollments" FOR SELECT TO "authenticated" USING (("auth"."role"() = 'admin'::"text"));
+
+
+
+CREATE POLICY "Allow admins to view all invoice payments" ON "public"."invoice_payments" FOR SELECT TO "authenticated" USING (("auth"."role"() = 'admin'::"text"));
+
+
+
+CREATE POLICY "Allow admins to view all notifications" ON "public"."notifications" FOR SELECT TO "authenticated" USING (("auth"."role"() = 'admin'::"text"));
+
+
+
+CREATE POLICY "Allow admins to view all payments" ON "public"."payments" FOR SELECT TO "authenticated" USING (("auth"."role"() = 'admin'::"text"));
+
+
+
+CREATE POLICY "Allow admins to view all payouts" ON "public"."payouts" FOR SELECT TO "authenticated" USING (("auth"."role"() = 'admin'::"text"));
+
+
+
+CREATE POLICY "Allow admins to view all platform settings" ON "public"."platform_settings" FOR SELECT TO "authenticated" USING (("auth"."role"() = 'admin'::"text"));
+
+
+
+CREATE POLICY "Allow admins to view all products" ON "public"."products" FOR SELECT TO "authenticated" USING (("auth"."role"() = 'admin'::"text"));
+
+
+
+CREATE POLICY "Allow admins to view all profiles" ON "public"."admin_profiles" FOR SELECT TO "authenticated" USING (("auth"."role"() = 'admin'::"text"));
+
+
+
+CREATE POLICY "Allow admins to view their own profiles" ON "public"."admin_profiles" FOR SELECT TO "authenticated" USING (("profile_id" = ( SELECT "users"."id"
+   FROM "public"."users"
+  WHERE ("users"."auth_user_id" = "auth"."uid"()))));
+
+
+
+CREATE POLICY "Allow brands to approve or reject enrollments" ON "public"."enrollments" FOR UPDATE TO "authenticated" USING (("brand_id" IN ( SELECT "brand_profiles"."id"
+   FROM "public"."brand_profiles"
+  WHERE ("brand_profiles"."profile_id" = ( SELECT "users"."id"
+           FROM "public"."users"
+          WHERE ("users"."auth_user_id" = "auth"."uid"())))))) WITH CHECK (("brand_id" IN ( SELECT "brand_profiles"."id"
+   FROM "public"."brand_profiles"
+  WHERE ("brand_profiles"."profile_id" = ( SELECT "users"."id"
+           FROM "public"."users"
+          WHERE ("users"."auth_user_id" = "auth"."uid"()))))));
+
+
+
+CREATE POLICY "Allow brands to delete their own profile" ON "public"."brand_profiles" FOR DELETE TO "authenticated" USING (("id" = ( SELECT "brand_profiles"."profile_id"
+   FROM "public"."users"
+  WHERE ("users"."auth_user_id" = "auth"."uid"()))));
+
+
+
+CREATE POLICY "Allow brands to insert campaigns" ON "public"."campaigns" FOR INSERT TO "authenticated" WITH CHECK (("brand_id" = ( SELECT "brand_profiles"."id"
+   FROM "public"."brand_profiles"
+  WHERE ("brand_profiles"."profile_id" = ( SELECT "users"."id"
+           FROM "public"."users"
+          WHERE ("users"."auth_user_id" = "auth"."uid"()))))));
+
+
+
+CREATE POLICY "Allow brands to insert profiles" ON "public"."brand_profiles" FOR INSERT TO "authenticated" WITH CHECK (("profile_id" = ( SELECT "users"."id"
+   FROM "public"."users"
+  WHERE ("users"."auth_user_id" = "auth"."uid"()))));
+
+
+
+CREATE POLICY "Allow brands to update their own campaign deliverables" ON "public"."campaign_deliverables" FOR UPDATE TO "authenticated" USING (("campaign_id" IN ( SELECT "campaigns"."id"
+   FROM "public"."campaigns"
+  WHERE ("campaigns"."brand_id" = ( SELECT "brand_profiles"."id"
+           FROM "public"."brand_profiles"
+          WHERE ("brand_profiles"."profile_id" = ( SELECT "users"."id"
+                   FROM "public"."users"
+                  WHERE ("users"."auth_user_id" = "auth"."uid"()))))))));
+
+
+
+CREATE POLICY "Allow brands to update their own campaign images" ON "public"."campaign_images" FOR UPDATE TO "authenticated" USING (("campaign_id" IN ( SELECT "campaigns"."id"
+   FROM "public"."campaigns"
+  WHERE ("campaigns"."brand_id" = ( SELECT "brand_profiles"."id"
+           FROM "public"."brand_profiles"
+          WHERE ("brand_profiles"."profile_id" = ( SELECT "users"."id"
+                   FROM "public"."users"
+                  WHERE ("users"."auth_user_id" = "auth"."uid"()))))))));
+
+
+
+CREATE POLICY "Allow brands to update their own campaigns" ON "public"."campaigns" FOR UPDATE TO "authenticated" USING (("brand_id" = ( SELECT "brand_profiles"."id"
+   FROM "public"."brand_profiles"
+  WHERE ("brand_profiles"."profile_id" = ( SELECT "users"."id"
+           FROM "public"."users"
+          WHERE ("users"."auth_user_id" = "auth"."uid"())))))) WITH CHECK (("brand_id" = ( SELECT "brand_profiles"."id"
+   FROM "public"."brand_profiles"
+  WHERE ("brand_profiles"."profile_id" = ( SELECT "users"."id"
+           FROM "public"."users"
+          WHERE ("users"."auth_user_id" = "auth"."uid"()))))));
+
+
+
+CREATE POLICY "Allow brands to update their own products" ON "public"."products" FOR UPDATE TO "authenticated" USING (("brand_id" = ( SELECT "brand_profiles"."id"
+   FROM "public"."brand_profiles"
+  WHERE ("brand_profiles"."profile_id" = ( SELECT "users"."id"
+           FROM "public"."users"
+          WHERE ("users"."auth_user_id" = "auth"."uid"()))))));
+
+
+
+CREATE POLICY "Allow brands to update their own profile" ON "public"."brand_profiles" FOR UPDATE TO "authenticated" USING (("id" = ( SELECT "brand_profiles"."profile_id"
+   FROM "public"."users"
+  WHERE ("users"."auth_user_id" = "auth"."uid"())))) WITH CHECK (("id" = ( SELECT "brand_profiles"."profile_id"
+   FROM "public"."users"
+  WHERE ("users"."auth_user_id" = "auth"."uid"()))));
+
+
+
+CREATE POLICY "Allow brands to update their own profiles" ON "public"."brand_profiles" FOR UPDATE TO "authenticated" USING (("profile_id" = ( SELECT "users"."id"
+   FROM "public"."users"
+  WHERE ("users"."auth_user_id" = "auth"."uid"())))) WITH CHECK (("profile_id" = ( SELECT "users"."id"
+   FROM "public"."users"
+  WHERE ("users"."auth_user_id" = "auth"."uid"()))));
+
+
+
+CREATE POLICY "Allow brands to update their own profiles if not approved" ON "public"."brand_profiles" FOR UPDATE TO "authenticated" USING ((("profile_id" = ( SELECT "users"."id"
+   FROM "public"."users"
+  WHERE ("users"."auth_user_id" = "auth"."uid"()))) AND ("admin_approved" = false))) WITH CHECK ((("profile_id" = ( SELECT "users"."id"
+   FROM "public"."users"
+  WHERE ("users"."auth_user_id" = "auth"."uid"()))) AND ("admin_approved" = false)));
+
+
+
+CREATE POLICY "Allow brands to view deliverable submissions for their campaign" ON "public"."deliverable_submissions" FOR SELECT TO "authenticated" USING (("campaign_deliverable_id" IN ( SELECT "campaign_deliverables"."id"
+   FROM "public"."campaign_deliverables"
+  WHERE ("campaign_deliverables"."campaign_id" IN ( SELECT "campaigns"."id"
+           FROM "public"."campaigns"
+          WHERE ("campaigns"."brand_id" = ( SELECT "brand_profiles"."id"
+                   FROM "public"."brand_profiles"
+                  WHERE ("brand_profiles"."profile_id" = ( SELECT "users"."id"
+                           FROM "public"."users"
+                          WHERE ("users"."auth_user_id" = "auth"."uid"()))))))))));
+
+
+
+CREATE POLICY "Allow brands to view deliverables for their campaigns" ON "public"."deliverables" FOR SELECT TO "authenticated" USING (("platform_id" IN ( SELECT "products"."platform_id"
+   FROM "public"."products"
+  WHERE ("products"."brand_id" = ( SELECT "brand_profiles"."id"
+           FROM "public"."brand_profiles"
+          WHERE ("brand_profiles"."profile_id" = ( SELECT "users"."id"
+                   FROM "public"."users"
+                  WHERE ("users"."auth_user_id" = "auth"."uid"()))))))));
+
+
+
+CREATE POLICY "Allow brands to view platform settings" ON "public"."platform_settings" FOR SELECT TO "authenticated" USING (true);
+
+
+
+CREATE POLICY "Allow brands to view their own campaign deliverables" ON "public"."campaign_deliverables" FOR SELECT TO "authenticated" USING (("campaign_id" IN ( SELECT "campaigns"."id"
+   FROM "public"."campaigns"
+  WHERE ("campaigns"."brand_id" = ( SELECT "brand_profiles"."id"
+           FROM "public"."brand_profiles"
+          WHERE ("brand_profiles"."profile_id" = ( SELECT "users"."id"
+                   FROM "public"."users"
+                  WHERE ("users"."auth_user_id" = "auth"."uid"()))))))));
+
+
+
+CREATE POLICY "Allow brands to view their own campaign images" ON "public"."campaign_images" FOR SELECT TO "authenticated" USING (("campaign_id" IN ( SELECT "campaigns"."id"
+   FROM "public"."campaigns"
+  WHERE ("campaigns"."brand_id" = ( SELECT "brand_profiles"."id"
+           FROM "public"."brand_profiles"
+          WHERE ("brand_profiles"."profile_id" = ( SELECT "users"."id"
+                   FROM "public"."users"
+                  WHERE ("users"."auth_user_id" = "auth"."uid"()))))))));
+
+
+
+CREATE POLICY "Allow brands to view their own campaigns" ON "public"."campaigns" FOR SELECT TO "authenticated" USING (("brand_id" = ( SELECT "brand_profiles"."id"
+   FROM "public"."brand_profiles"
+  WHERE ("brand_profiles"."profile_id" = ( SELECT "users"."id"
+           FROM "public"."users"
+          WHERE ("users"."auth_user_id" = "auth"."uid"()))))));
+
+
+
+CREATE POLICY "Allow brands to view their own invoice enrollments" ON "public"."invoice_enrollments" FOR SELECT TO "authenticated" USING (("invoice_id" IN ( SELECT "invoices"."id"
+   FROM "public"."invoices"
+  WHERE ("invoices"."brand_id" = ( SELECT "brand_profiles"."id"
+           FROM "public"."brand_profiles"
+          WHERE ("brand_profiles"."profile_id" = ( SELECT "users"."id"
+                   FROM "public"."users"
+                  WHERE ("users"."auth_user_id" = "auth"."uid"()))))))));
+
+
+
+CREATE POLICY "Allow brands to view their own invoice payments" ON "public"."invoice_payments" FOR SELECT TO "authenticated" USING (("invoice_id" IN ( SELECT "invoices"."id"
+   FROM "public"."invoices"
+  WHERE ("invoices"."brand_id" = ( SELECT "brand_profiles"."id"
+           FROM "public"."brand_profiles"
+          WHERE ("brand_profiles"."profile_id" = ( SELECT "users"."id"
+                   FROM "public"."users"
+                  WHERE ("users"."auth_user_id" = "auth"."uid"()))))))));
+
+
+
+CREATE POLICY "Allow brands to view their own invoices" ON "public"."invoices" FOR SELECT TO "authenticated" USING (("brand_id" = ( SELECT "brand_profiles"."id"
+   FROM "public"."brand_profiles"
+  WHERE ("brand_profiles"."profile_id" = ( SELECT "users"."id"
+           FROM "public"."users"
+          WHERE ("users"."auth_user_id" = "auth"."uid"()))))));
+
+
+
+CREATE POLICY "Allow brands to view their own payments" ON "public"."payments" FOR SELECT TO "authenticated" USING (("brand_id" = ( SELECT "brand_profiles"."id"
+   FROM "public"."brand_profiles"
+  WHERE ("brand_profiles"."profile_id" = ( SELECT "users"."id"
+           FROM "public"."users"
+          WHERE ("users"."auth_user_id" = "auth"."uid"()))))));
+
+
+
+CREATE POLICY "Allow brands to view their own products" ON "public"."products" FOR SELECT TO "authenticated" USING (("brand_id" = ( SELECT "brand_profiles"."id"
+   FROM "public"."brand_profiles"
+  WHERE ("brand_profiles"."profile_id" = ( SELECT "users"."id"
+           FROM "public"."users"
+          WHERE ("users"."auth_user_id" = "auth"."uid"()))))));
+
+
+
+CREATE POLICY "Allow brands to view their own profile" ON "public"."brand_profiles" FOR SELECT TO "authenticated" USING (("id" = ( SELECT "brand_profiles"."profile_id"
+   FROM "public"."users"
+  WHERE ("users"."auth_user_id" = "auth"."uid"()))));
+
+
+
+CREATE POLICY "Allow brands to view their own profiles" ON "public"."brand_profiles" FOR SELECT TO "authenticated" USING (("profile_id" = ( SELECT "users"."id"
+   FROM "public"."users"
+  WHERE ("users"."auth_user_id" = "auth"."uid"()))));
+
+
+
+CREATE POLICY "Allow shoppers to insert enrollments" ON "public"."enrollments" FOR INSERT TO "authenticated" WITH CHECK (("shopper_id" = ( SELECT "users"."id"
+   FROM "public"."users"
+  WHERE ("users"."auth_user_id" = "auth"."uid"()))));
+
+
+
+CREATE POLICY "Allow shoppers to insert payouts" ON "public"."payouts" FOR INSERT TO "authenticated" WITH CHECK (("shopper_id" = ( SELECT "users"."id"
+   FROM "public"."users"
+  WHERE ("users"."auth_user_id" = "auth"."uid"()))));
+
+
+
+CREATE POLICY "Allow shoppers to insert profiles" ON "public"."shopper_profiles" FOR INSERT TO "authenticated" WITH CHECK ((("profile_id" = ( SELECT "users"."id"
+   FROM "public"."users"
+  WHERE ("users"."auth_user_id" = "auth"."uid"()))) AND (NOT (EXISTS ( SELECT 1
+   FROM "public"."shopper_profiles" "shopper_profiles_1"
+  WHERE ("shopper_profiles_1"."profile_id" = ( SELECT "users"."id"
+           FROM "public"."users"
+          WHERE ("users"."auth_user_id" = "auth"."uid"()))))))));
+
+
+
+CREATE POLICY "Allow shoppers to update their own deliverable submissions" ON "public"."deliverable_submissions" FOR UPDATE TO "authenticated" USING (("enrollment_id" IN ( SELECT "enrollments"."id"
+   FROM "public"."enrollments"
+  WHERE ("enrollments"."shopper_id" = ( SELECT "shopper_profiles"."id"
+           FROM "public"."shopper_profiles"
+          WHERE ("shopper_profiles"."profile_id" = ( SELECT "users"."id"
+                   FROM "public"."users"
+                  WHERE ("users"."auth_user_id" = "auth"."uid"()))))))));
+
+
+
+CREATE POLICY "Allow shoppers to update their own profiles" ON "public"."shopper_profiles" FOR UPDATE TO "authenticated" USING (("profile_id" = ( SELECT "users"."id"
+   FROM "public"."users"
+  WHERE ("users"."auth_user_id" = "auth"."uid"())))) WITH CHECK (("profile_id" = ( SELECT "users"."id"
+   FROM "public"."users"
+  WHERE ("users"."auth_user_id" = "auth"."uid"()))));
+
+
+
+CREATE POLICY "Allow shoppers to view their own coupon redemptions" ON "public"."coupon_redemptions" FOR SELECT TO "authenticated" USING (("shopper_id" = ( SELECT "shopper_profiles"."id"
+   FROM "public"."shopper_profiles"
+  WHERE ("shopper_profiles"."profile_id" = ( SELECT "users"."id"
+           FROM "public"."users"
+          WHERE ("users"."auth_user_id" = "auth"."uid"()))))));
+
+
+
+CREATE POLICY "Allow shoppers to view their own deliverable submissions" ON "public"."deliverable_submissions" FOR SELECT TO "authenticated" USING (("enrollment_id" IN ( SELECT "enrollments"."id"
+   FROM "public"."enrollments"
+  WHERE ("enrollments"."shopper_id" = ( SELECT "shopper_profiles"."id"
+           FROM "public"."shopper_profiles"
+          WHERE ("shopper_profiles"."profile_id" = ( SELECT "users"."id"
+                   FROM "public"."users"
+                  WHERE ("users"."auth_user_id" = "auth"."uid"()))))))));
+
+
+
+CREATE POLICY "Allow shoppers to view their own enrollments" ON "public"."enrollments" FOR SELECT TO "authenticated" USING (("shopper_id" = ( SELECT "users"."id"
+   FROM "public"."users"
+  WHERE ("users"."auth_user_id" = "auth"."uid"()))));
+
+
+
+CREATE POLICY "Allow shoppers to view their own payouts" ON "public"."payouts" FOR SELECT TO "authenticated" USING (("shopper_id" = ( SELECT "users"."id"
+   FROM "public"."users"
+  WHERE ("users"."auth_user_id" = "auth"."uid"()))));
+
+
+
+CREATE POLICY "Allow shoppers to view their own profiles and related notificat" ON "public"."shopper_profiles" FOR SELECT TO "authenticated" USING ((("profile_id" = ( SELECT "users"."id"
+   FROM "public"."users"
+  WHERE ("users"."auth_user_id" = "auth"."uid"()))) OR (EXISTS ( SELECT 1
+   FROM "public"."notifications"
+  WHERE ("notifications"."user_id" = ( SELECT "users"."id"
+           FROM "public"."users"
+          WHERE ("users"."auth_user_id" = "auth"."uid"())))))));
+
+
+
+CREATE POLICY "Allow users to delete their own enrollments" ON "public"."enrollments" FOR DELETE TO "authenticated" USING (("shopper_id" = ( SELECT "users"."id"
+   FROM "public"."users"
+  WHERE ("users"."auth_user_id" = "auth"."uid"()))));
+
+
+
+CREATE POLICY "Allow users to insert enrollments" ON "public"."enrollments" FOR INSERT TO "authenticated" WITH CHECK (("shopper_id" = ( SELECT "users"."id"
+   FROM "public"."users"
+  WHERE ("users"."auth_user_id" = "auth"."uid"()))));
+
+
+
+CREATE POLICY "Allow users to update their own enrollments" ON "public"."enrollments" FOR UPDATE TO "authenticated" USING (("shopper_id" = ( SELECT "users"."id"
+   FROM "public"."users"
+  WHERE ("users"."auth_user_id" = "auth"."uid"())))) WITH CHECK (("shopper_id" = ( SELECT "users"."id"
+   FROM "public"."users"
+  WHERE ("users"."auth_user_id" = "auth"."uid"()))));
+
+
+
+CREATE POLICY "Allow users to view their own enrollments" ON "public"."enrollments" FOR SELECT TO "authenticated" USING (("shopper_id" = ( SELECT "users"."id"
+   FROM "public"."users"
+  WHERE ("users"."auth_user_id" = "auth"."uid"()))));
+
+
+
+CREATE POLICY "Allow users to view their own notification preferences" ON "public"."notification_preferences" FOR SELECT TO "authenticated" USING (("user_id" = ( SELECT "users"."id"
+   FROM "public"."users"
+  WHERE ("users"."auth_user_id" = "auth"."uid"()))));
+
+
+
+CREATE POLICY "Allow users to view their own notifications" ON "public"."notifications" FOR SELECT TO "authenticated" USING (("user_id" = ( SELECT "users"."id"
+   FROM "public"."users"
+  WHERE ("users"."auth_user_id" = "auth"."uid"()))));
 
 
 
@@ -3192,6 +4037,12 @@ GRANT ALL ON FUNCTION "public"."generate_and_link_weekly_invoices"() TO "service
 
 
 
+GRANT ALL ON FUNCTION "public"."generate_invoices_in_zoho_books"() TO "anon";
+GRANT ALL ON FUNCTION "public"."generate_invoices_in_zoho_books"() TO "authenticated";
+GRANT ALL ON FUNCTION "public"."generate_invoices_in_zoho_books"() TO "service_role";
+
+
+
 GRANT ALL ON FUNCTION "public"."handle_combined_payout_notifications"("enrollment_id" bigint, "amount" numeric, "status" "text", "failure_reason" "text") TO "anon";
 GRANT ALL ON FUNCTION "public"."handle_combined_payout_notifications"("enrollment_id" bigint, "amount" numeric, "status" "text", "failure_reason" "text") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."handle_combined_payout_notifications"("enrollment_id" bigint, "amount" numeric, "status" "text", "failure_reason" "text") TO "service_role";
@@ -3279,6 +4130,18 @@ GRANT ALL ON FUNCTION "public"."process_pending_payouts"() TO "service_role";
 GRANT ALL ON FUNCTION "public"."retry_failed_payouts_on_payment_update"() TO "anon";
 GRANT ALL ON FUNCTION "public"."retry_failed_payouts_on_payment_update"() TO "authenticated";
 GRANT ALL ON FUNCTION "public"."retry_failed_payouts_on_payment_update"() TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."sync_invoice_status_from_zoho"("zoho_invoice_id" "text", "new_status" "text") TO "anon";
+GRANT ALL ON FUNCTION "public"."sync_invoice_status_from_zoho"("zoho_invoice_id" "text", "new_status" "text") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."sync_invoice_status_from_zoho"("zoho_invoice_id" "text", "new_status" "text") TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."trigger_generate_invoices"() TO "anon";
+GRANT ALL ON FUNCTION "public"."trigger_generate_invoices"() TO "authenticated";
+GRANT ALL ON FUNCTION "public"."trigger_generate_invoices"() TO "service_role";
 
 
 
@@ -3459,6 +4322,18 @@ GRANT ALL ON TABLE "public"."invoices" TO "service_role";
 GRANT ALL ON SEQUENCE "public"."invoices_id_seq" TO "anon";
 GRANT ALL ON SEQUENCE "public"."invoices_id_seq" TO "authenticated";
 GRANT ALL ON SEQUENCE "public"."invoices_id_seq" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."items" TO "anon";
+GRANT ALL ON TABLE "public"."items" TO "authenticated";
+GRANT ALL ON TABLE "public"."items" TO "service_role";
+
+
+
+GRANT ALL ON SEQUENCE "public"."items_id_seq" TO "anon";
+GRANT ALL ON SEQUENCE "public"."items_id_seq" TO "authenticated";
+GRANT ALL ON SEQUENCE "public"."items_id_seq" TO "service_role";
 
 
 

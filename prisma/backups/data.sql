@@ -167,7 +167,7 @@ fbb94ab6-7ce3-42e8-899b-4413f8077418	valid	2025-02-14 16:48:34.231832+00	\N	aead
 -- Data for Name: users; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
-COPY "public"."users" ("id", "auth_user_id", "user_type", "created_at", "status") FROM stdin;
+COPY "public"."users" ("id", "auth_user_id", "user_type", "created_at", "status", "onboarding_completed") FROM stdin;
 \.
 
 
@@ -175,7 +175,7 @@ COPY "public"."users" ("id", "auth_user_id", "user_type", "created_at", "status"
 -- Data for Name: admin_profiles; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
-COPY "public"."admin_profiles" ("id", "first_name", "last_name", "phone_number", "email", "profile_picture_url", "role", "created_at", "profile_id", "onboarding_completed") FROM stdin;
+COPY "public"."admin_profiles" ("id", "first_name", "last_name", "phone_number", "email", "profile_picture_url", "role", "created_at", "profile_id") FROM stdin;
 \.
 
 
@@ -183,7 +183,7 @@ COPY "public"."admin_profiles" ("id", "first_name", "last_name", "phone_number",
 -- Data for Name: brand_profiles; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
-COPY "public"."brand_profiles" ("id", "brand_name", "company_name", "contact_person", "phone_number", "email", "accounts_email", "website", "gst_number", "business_address", "city", "state", "postal_code", "brand_logo_url", "payment_terms", "razorpay_va_id", "razorpay_va_number", "razorpay_va_ifsc", "razorpay_va_upi_id", "zoho_books_id", "created_at", "profile_id", "onboarding_completed", "admin_approved", "tds_rate") FROM stdin;
+COPY "public"."brand_profiles" ("id", "brand_name", "company_name", "contact_person", "phone_number", "email", "accounts_email", "website", "gst_number", "business_address", "city", "state", "postal_code", "brand_logo_url", "payment_terms", "razorpay_va_id", "razorpay_va_number", "razorpay_va_ifsc", "razorpay_va_upi_id", "zoho_books_id", "created_at", "profile_id", "admin_approved", "tds_rate") FROM stdin;
 \.
 
 
@@ -244,18 +244,18 @@ COPY "public"."coupons" ("id", "code", "discount_percentage", "bonus_amount", "u
 
 
 --
--- Data for Name: shopper_profiles; Type: TABLE DATA; Schema: public; Owner: postgres
+-- Data for Name: enrollments; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
-COPY "public"."shopper_profiles" ("id", "first_name", "last_name", "phone_number", "address", "city", "state", "postal_code", "dob", "profile_picture_url", "payment_method", "bank_account_number", "ifsc_code", "upi_id", "created_at", "profile_id", "onboarding_completed") FROM stdin;
+COPY "public"."enrollments" ("id", "campaign_id", "shopper_id", "order_id", "rebate_amount", "bonus_amount", "coupon_adjustment", "incentive_amount", "deduction_amount", "platform_profit", "approval_remarks", "created_at", "coupon_id", "is_invoiced", "status", "rejection_count", "brand_id") FROM stdin;
 \.
 
 
 --
--- Data for Name: enrollments; Type: TABLE DATA; Schema: public; Owner: postgres
+-- Data for Name: shopper_profiles; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
-COPY "public"."enrollments" ("id", "campaign_id", "shopper_id", "order_id", "rebate_amount", "bonus_amount", "coupon_adjustment", "incentive_amount", "deduction_amount", "platform_profit", "approval_remarks", "created_at", "coupon_id", "is_invoiced", "status", "rejection_count") FROM stdin;
+COPY "public"."shopper_profiles" ("id", "first_name", "last_name", "phone_number", "address", "city", "state", "postal_code", "dob", "profile_picture_url", "payment_method", "bank_account_number", "ifsc_code", "upi_id", "created_at", "profile_id") FROM stdin;
 \.
 
 
@@ -304,6 +304,14 @@ COPY "public"."payments" ("id", "brand_id", "amount", "status", "razorpay_paymen
 --
 
 COPY "public"."invoice_payments" ("id", "invoice_id", "payment_id", "applied_amount", "remaining_amount", "created_at") FROM stdin;
+\.
+
+
+--
+-- Data for Name: items; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY "public"."items" ("id", "name", "description", "price", "gst_rate", "created_at") FROM stdin;
 \.
 
 
@@ -399,6 +407,19 @@ COPY "public"."zoho_books_webhooks" ("id", "event_type", "payload", "received_at
 --
 
 COPY "storage"."buckets" ("id", "name", "owner", "created_at", "updated_at", "public", "avif_autodetection", "file_size_limit", "allowed_mime_types", "owner_id") FROM stdin;
+user_uploads	user_uploads	\N	2025-02-16 09:41:57.167749+00	2025-02-16 09:41:57.167749+00	t	f	\N	\N	\N
+brand_assets	brand_assets	\N	2025-02-16 09:41:57.167749+00	2025-02-16 09:41:57.167749+00	t	f	\N	\N	\N
+invoice_documents	invoice_documents	\N	2025-02-16 09:41:57.167749+00	2025-02-16 09:41:57.167749+00	t	f	\N	\N	\N
+notification_attachments	notification_attachments	\N	2025-02-16 09:41:57.167749+00	2025-02-16 09:41:57.167749+00	t	f	\N	\N	\N
+campaign_assets	campaign_assets	\N	2025-02-16 09:43:46.282804+00	2025-02-16 09:43:46.282804+00	t	f	\N	\N	\N
+deliverable_submissions	deliverable_submissions	\N	2025-02-16 09:43:46.282804+00	2025-02-16 09:43:46.282804+00	t	f	\N	\N	\N
+coupon_images	coupon_images	\N	2025-02-16 09:43:46.282804+00	2025-02-16 09:43:46.282804+00	t	f	\N	\N	\N
+profile_pictures	profile_pictures	\N	2025-02-16 09:44:16.674252+00	2025-02-16 09:44:16.674252+00	t	f	\N	\N	\N
+brand_marketing_materials	brand_marketing_materials	\N	2025-02-16 09:44:16.674252+00	2025-02-16 09:44:16.674252+00	t	f	\N	\N	\N
+invoice_archive	invoice_archive	\N	2025-02-16 09:44:16.674252+00	2025-02-16 09:44:16.674252+00	t	f	\N	\N	\N
+campaign_reports	campaign_reports	\N	2025-02-16 09:44:16.674252+00	2025-02-16 09:44:16.674252+00	t	f	\N	\N	\N
+user_documents	user_documents	\N	2025-02-16 09:44:16.674252+00	2025-02-16 09:44:16.674252+00	t	f	\N	\N	\N
+feedback_and_reviews	feedback_and_reviews	\N	2025-02-16 09:44:16.674252+00	2025-02-16 09:44:16.674252+00	t	f	\N	\N	\N
 \.
 
 
@@ -554,6 +575,13 @@ SELECT pg_catalog.setval('"public"."invoice_payments_id_seq"', 1, false);
 --
 
 SELECT pg_catalog.setval('"public"."invoices_id_seq"', 1, false);
+
+
+--
+-- Name: items_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
+--
+
+SELECT pg_catalog.setval('"public"."items_id_seq"', 1, false);
 
 
 --
