@@ -23,6 +23,9 @@ SET row_security = off;
 --
 
 COPY "auth"."audit_log_entries" ("instance_id", "id", "payload", "created_at", "ip_address") FROM stdin;
+00000000-0000-0000-0000-000000000000	62d02f8d-7740-466a-828a-c3dfdc680bdf	{"action":"user_signedup","actor_id":"0d535dca-5466-4bd6-8f44-2c5c6fc74464","actor_username":"shivam@sharksmarketing.com","actor_via_sso":false,"log_type":"team","traits":{"provider":"email"}}	2025-02-18 00:23:16.887677+00	
+00000000-0000-0000-0000-000000000000	8f7e421a-8f25-44f9-b8d3-250f72ab48b3	{"action":"login","actor_id":"0d535dca-5466-4bd6-8f44-2c5c6fc74464","actor_username":"shivam@sharksmarketing.com","actor_via_sso":false,"log_type":"account","traits":{"provider":"email"}}	2025-02-18 00:23:16.909115+00	
+00000000-0000-0000-0000-000000000000	1094d331-3f35-42f8-9673-71f7b192bdd3	{"action":"logout","actor_id":"0d535dca-5466-4bd6-8f44-2c5c6fc74464","actor_username":"shivam@sharksmarketing.com","actor_via_sso":false,"log_type":"account"}	2025-02-18 00:23:23.68765+00	
 \.
 
 
@@ -39,6 +42,7 @@ COPY "auth"."flow_state" ("id", "user_id", "auth_code", "code_challenge_method",
 --
 
 COPY "auth"."users" ("instance_id", "id", "aud", "role", "email", "encrypted_password", "email_confirmed_at", "invited_at", "confirmation_token", "confirmation_sent_at", "recovery_token", "recovery_sent_at", "email_change_token_new", "email_change", "email_change_sent_at", "last_sign_in_at", "raw_app_meta_data", "raw_user_meta_data", "is_super_admin", "created_at", "updated_at", "phone", "phone_confirmed_at", "phone_change", "phone_change_token", "phone_change_sent_at", "email_change_token_current", "email_change_confirm_status", "banned_until", "reauthentication_token", "reauthentication_sent_at", "is_sso_user", "deleted_at", "is_anonymous", "onboarding_completed") FROM stdin;
+00000000-0000-0000-0000-000000000000	0d535dca-5466-4bd6-8f44-2c5c6fc74464	authenticated	authenticated	shivam@sharksmarketing.com	$2a$10$y.NKsGgTu7qE5.IY/UGphOATC1VSl6FBBkprrDOMrq1tKSvo5QjRa	2025-02-18 00:23:16.895782+00	\N		\N		\N			\N	2025-02-18 00:23:16.909808+00	{"provider": "email", "providers": ["email"]}	{"sub": "0d535dca-5466-4bd6-8f44-2c5c6fc74464", "email": "shivam@sharksmarketing.com", "email_verified": true, "phone_verified": false}	\N	2025-02-18 00:23:16.837143+00	2025-02-18 00:23:16.94262+00	\N	\N			\N		0	\N		\N	f	\N	f	f
 \.
 
 
@@ -47,6 +51,7 @@ COPY "auth"."users" ("instance_id", "id", "aud", "role", "email", "encrypted_pas
 --
 
 COPY "auth"."identities" ("provider_id", "user_id", "identity_data", "provider", "last_sign_in_at", "created_at", "updated_at", "id") FROM stdin;
+0d535dca-5466-4bd6-8f44-2c5c6fc74464	0d535dca-5466-4bd6-8f44-2c5c6fc74464	{"sub": "0d535dca-5466-4bd6-8f44-2c5c6fc74464", "email": "shivam@sharksmarketing.com", "email_verified": false, "phone_verified": false}	email	2025-02-18 00:23:16.873841+00	2025-02-18 00:23:16.873893+00	2025-02-18 00:23:16.873893+00	58089d3c-6c7a-4f30-91f5-8255f08d2879
 \.
 
 
@@ -476,7 +481,7 @@ e44b0bef-78cf-460b-8dc9-e3c84ca0c4bd	SUPABASE_EDGE_FUNCTION_URL	Dummy Edge Funct
 -- Name: refresh_tokens_id_seq; Type: SEQUENCE SET; Schema: auth; Owner: supabase_auth_admin
 --
 
-SELECT pg_catalog.setval('"auth"."refresh_tokens_id_seq"', 1, false);
+SELECT pg_catalog.setval('"auth"."refresh_tokens_id_seq"', 1, true);
 
 
 --
