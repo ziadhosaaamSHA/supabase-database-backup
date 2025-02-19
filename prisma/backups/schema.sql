@@ -141,6 +141,18 @@ CREATE TYPE "public"."enrollment_status" AS ENUM (
 ALTER TYPE "public"."enrollment_status" OWNER TO "postgres";
 
 
+CREATE TYPE "public"."user_role" AS ENUM (
+    'user',
+    'admin',
+    'editor',
+    'manager',
+    'super_admin'
+);
+
+
+ALTER TYPE "public"."user_role" OWNER TO "postgres";
+
+
 CREATE TYPE "public"."user_status" AS ENUM (
     'active',
     'inactive',
@@ -1777,7 +1789,7 @@ CREATE TABLE IF NOT EXISTS "public"."brand_profiles" (
     "tds_rate" numeric(5,2) DEFAULT 0 NOT NULL,
     CONSTRAINT "brand_profiles_accounts_email_check" CHECK (("accounts_email" ~ '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$'::"text")),
     CONSTRAINT "brand_profiles_email_check" CHECK (("email" ~ '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$'::"text")),
-    CONSTRAINT "brand_profiles_gst_number_check" CHECK (("gst_number" ~ '^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][0-9][A-Z][0-9]$'::"text")),
+    CONSTRAINT "brand_profiles_gst_number_check" CHECK (("gst_number" ~ '^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][0-9][A-Z][A-Z0-9]$'::"text")),
     CONSTRAINT "brand_profiles_phone_number_check" CHECK (("phone_number" ~ '^[0-9]{10}$'::"text")),
     CONSTRAINT "brand_profiles_postal_code_check" CHECK (("postal_code" ~ '^[0-9]{5,6}$'::"text")),
     CONSTRAINT "brand_profiles_razorpay_va_ifsc_check" CHECK (("razorpay_va_ifsc" ~ '^[A-Z]{4}0[A-Z0-9]{6}$'::"text")),
@@ -3545,28 +3557,10 @@ CREATE POLICY "Allow users to view their own notifications" ON "public"."notific
 
 
 
-ALTER TABLE "public"."admin_profiles" ENABLE ROW LEVEL SECURITY;
-
-
-ALTER TABLE "public"."brand_profiles" ENABLE ROW LEVEL SECURITY;
-
-
 ALTER TABLE "public"."campaign_deliverables" ENABLE ROW LEVEL SECURITY;
 
 
 ALTER TABLE "public"."campaign_images" ENABLE ROW LEVEL SECURITY;
-
-
-ALTER TABLE "public"."campaigns" ENABLE ROW LEVEL SECURITY;
-
-
-ALTER TABLE "public"."coupon_redemptions" ENABLE ROW LEVEL SECURITY;
-
-
-ALTER TABLE "public"."coupons" ENABLE ROW LEVEL SECURITY;
-
-
-ALTER TABLE "public"."deliverable_submissions" ENABLE ROW LEVEL SECURITY;
 
 
 ALTER TABLE "public"."deliverables" ENABLE ROW LEVEL SECURITY;
@@ -3596,9 +3590,6 @@ ALTER TABLE "public"."payments" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "public"."payouts" ENABLE ROW LEVEL SECURITY;
 
 
-ALTER TABLE "public"."platform_settings" ENABLE ROW LEVEL SECURITY;
-
-
 ALTER TABLE "public"."platforms" ENABLE ROW LEVEL SECURITY;
 
 
@@ -3615,9 +3606,6 @@ ALTER TABLE "public"."razorpay_x_webhooks" ENABLE ROW LEVEL SECURITY;
 
 
 ALTER TABLE "public"."shopper_profiles" ENABLE ROW LEVEL SECURITY;
-
-
-ALTER TABLE "public"."users" ENABLE ROW LEVEL SECURITY;
 
 
 ALTER TABLE "public"."zeptomail_webhooks" ENABLE ROW LEVEL SECURITY;

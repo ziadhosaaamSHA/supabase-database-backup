@@ -26,6 +26,39 @@ COPY "auth"."audit_log_entries" ("instance_id", "id", "payload", "created_at", "
 00000000-0000-0000-0000-000000000000	62d02f8d-7740-466a-828a-c3dfdc680bdf	{"action":"user_signedup","actor_id":"0d535dca-5466-4bd6-8f44-2c5c6fc74464","actor_username":"shivam@sharksmarketing.com","actor_via_sso":false,"log_type":"team","traits":{"provider":"email"}}	2025-02-18 00:23:16.887677+00	
 00000000-0000-0000-0000-000000000000	8f7e421a-8f25-44f9-b8d3-250f72ab48b3	{"action":"login","actor_id":"0d535dca-5466-4bd6-8f44-2c5c6fc74464","actor_username":"shivam@sharksmarketing.com","actor_via_sso":false,"log_type":"account","traits":{"provider":"email"}}	2025-02-18 00:23:16.909115+00	
 00000000-0000-0000-0000-000000000000	1094d331-3f35-42f8-9673-71f7b192bdd3	{"action":"logout","actor_id":"0d535dca-5466-4bd6-8f44-2c5c6fc74464","actor_username":"shivam@sharksmarketing.com","actor_via_sso":false,"log_type":"account"}	2025-02-18 00:23:23.68765+00	
+00000000-0000-0000-0000-000000000000	f5f90069-86cb-438c-8246-07145074175b	{"action":"login","actor_id":"0d535dca-5466-4bd6-8f44-2c5c6fc74464","actor_username":"shivam@sharksmarketing.com","actor_via_sso":false,"log_type":"account","traits":{"provider":"email"}}	2025-02-18 12:49:46.33007+00	
+00000000-0000-0000-0000-000000000000	9695ad29-948b-4f3f-8b70-3eb7e45dfc26	{"action":"logout","actor_id":"0d535dca-5466-4bd6-8f44-2c5c6fc74464","actor_username":"shivam@sharksmarketing.com","actor_via_sso":false,"log_type":"account"}	2025-02-18 12:50:27.904868+00	
+00000000-0000-0000-0000-000000000000	302cb38e-0a47-4a63-b5ae-220584ec9e45	{"action":"user_signedup","actor_id":"d49d26dc-ed4f-451a-83f5-8bed9ff336cf","actor_username":"9.shivamgupta.6@gmail.com","actor_via_sso":false,"log_type":"team","traits":{"provider":"email"}}	2025-02-18 15:37:21.133911+00	
+00000000-0000-0000-0000-000000000000	4e4b1e2f-3c33-45bd-ae48-281d53e5eea1	{"action":"login","actor_id":"d49d26dc-ed4f-451a-83f5-8bed9ff336cf","actor_username":"9.shivamgupta.6@gmail.com","actor_via_sso":false,"log_type":"account","traits":{"provider":"email"}}	2025-02-18 15:37:21.139899+00	
+00000000-0000-0000-0000-000000000000	ad97c39f-9a61-4bf6-9ae3-bd0905a3820f	{"action":"user_repeated_signup","actor_id":"d49d26dc-ed4f-451a-83f5-8bed9ff336cf","actor_username":"9.shivamgupta.6@gmail.com","actor_via_sso":false,"log_type":"user","traits":{"provider":"email"}}	2025-02-18 15:37:26.97322+00	
+00000000-0000-0000-0000-000000000000	a38496ac-4482-47a5-ae11-f75e414b1173	{"action":"logout","actor_id":"d49d26dc-ed4f-451a-83f5-8bed9ff336cf","actor_username":"9.shivamgupta.6@gmail.com","actor_via_sso":false,"log_type":"account"}	2025-02-18 15:37:46.668667+00	
+00000000-0000-0000-0000-000000000000	3a1460f3-bf3e-479c-8bd5-2b0511ac90bc	{"action":"login","actor_id":"0d535dca-5466-4bd6-8f44-2c5c6fc74464","actor_username":"shivam@sharksmarketing.com","actor_via_sso":false,"log_type":"account","traits":{"provider":"email"}}	2025-02-18 15:47:20.761155+00	
+00000000-0000-0000-0000-000000000000	7ede5436-3fe8-4466-9242-61e396898de8	{"action":"login","actor_id":"0d535dca-5466-4bd6-8f44-2c5c6fc74464","actor_username":"shivam@sharksmarketing.com","actor_via_sso":false,"log_type":"account","traits":{"provider":"email"}}	2025-02-18 15:58:45.376114+00	
+00000000-0000-0000-0000-000000000000	0cc83643-5e00-422a-b921-4004908d075b	{"action":"logout","actor_id":"0d535dca-5466-4bd6-8f44-2c5c6fc74464","actor_username":"shivam@sharksmarketing.com","actor_via_sso":false,"log_type":"account"}	2025-02-18 16:27:15.566185+00	
+00000000-0000-0000-0000-000000000000	82fa4928-7949-4367-b514-51628c47a99b	{"action":"user_signedup","actor_id":"0ff5e996-5811-481b-be81-fe3338dfaab6","actor_username":"hoola123@gmail.com","actor_via_sso":false,"log_type":"team","traits":{"provider":"email"}}	2025-02-18 16:46:29.351112+00	
+00000000-0000-0000-0000-000000000000	b704e75b-bf38-4aff-a986-a1e5f61f1ecb	{"action":"login","actor_id":"0ff5e996-5811-481b-be81-fe3338dfaab6","actor_username":"hoola123@gmail.com","actor_via_sso":false,"log_type":"account","traits":{"provider":"email"}}	2025-02-18 16:46:29.357665+00	
+00000000-0000-0000-0000-000000000000	43427c96-4ec4-4375-b43c-39d7f68a0378	{"action":"logout","actor_id":"0ff5e996-5811-481b-be81-fe3338dfaab6","actor_username":"hoola123@gmail.com","actor_via_sso":false,"log_type":"account"}	2025-02-18 16:46:39.442589+00	
+00000000-0000-0000-0000-000000000000	a1045d14-b896-46a9-a29c-5f45e3d6b3cb	{"action":"login","actor_id":"0ff5e996-5811-481b-be81-fe3338dfaab6","actor_username":"hoola123@gmail.com","actor_via_sso":false,"log_type":"account","traits":{"provider":"email"}}	2025-02-18 16:47:14.753933+00	
+00000000-0000-0000-0000-000000000000	5b31ba94-d57f-4cff-89e9-2a5998f538ad	{"action":"logout","actor_id":"0ff5e996-5811-481b-be81-fe3338dfaab6","actor_username":"hoola123@gmail.com","actor_via_sso":false,"log_type":"account"}	2025-02-18 16:48:38.675797+00	
+00000000-0000-0000-0000-000000000000	224f1349-054a-40e9-9d61-d55e07b1df96	{"action":"user_signedup","actor_id":"24c65c17-c785-43ba-9f1e-806f1e509a28","actor_username":"hula123@gmail.com","actor_via_sso":false,"log_type":"team","traits":{"provider":"email"}}	2025-02-18 16:50:10.900308+00	
+00000000-0000-0000-0000-000000000000	2a434031-c227-4a19-8f89-1217216f3a62	{"action":"login","actor_id":"24c65c17-c785-43ba-9f1e-806f1e509a28","actor_username":"hula123@gmail.com","actor_via_sso":false,"log_type":"account","traits":{"provider":"email"}}	2025-02-18 16:50:10.904313+00	
+00000000-0000-0000-0000-000000000000	243ad60f-4220-416d-94cd-08d49527e945	{"action":"user_signedup","actor_id":"e9b94f74-5084-43b8-996c-3ce68d96290b","actor_username":"guppa123@gmail.com","actor_via_sso":false,"log_type":"team","traits":{"provider":"email"}}	2025-02-18 16:55:17.10023+00	
+00000000-0000-0000-0000-000000000000	1eeac0c8-df31-4753-8c2a-aa5e999fa12a	{"action":"login","actor_id":"e9b94f74-5084-43b8-996c-3ce68d96290b","actor_username":"guppa123@gmail.com","actor_via_sso":false,"log_type":"account","traits":{"provider":"email"}}	2025-02-18 16:55:17.107939+00	
+00000000-0000-0000-0000-000000000000	4176cef9-80d8-4a03-97a8-0d0008399299	{"action":"token_refreshed","actor_id":"24c65c17-c785-43ba-9f1e-806f1e509a28","actor_username":"hula123@gmail.com","actor_via_sso":false,"log_type":"token"}	2025-02-18 20:08:59.278082+00	
+00000000-0000-0000-0000-000000000000	9c8ff73d-5598-4951-a7ba-f2d750e8c7de	{"action":"token_revoked","actor_id":"24c65c17-c785-43ba-9f1e-806f1e509a28","actor_username":"hula123@gmail.com","actor_via_sso":false,"log_type":"token"}	2025-02-18 20:08:59.293364+00	
+00000000-0000-0000-0000-000000000000	00131b84-51ec-4699-a2eb-b7ae6e5da40b	{"action":"token_refreshed","actor_id":"24c65c17-c785-43ba-9f1e-806f1e509a28","actor_username":"hula123@gmail.com","actor_via_sso":false,"log_type":"token"}	2025-02-18 20:09:36.991265+00	
+00000000-0000-0000-0000-000000000000	1bd1fb22-d736-4b5c-9a0d-ae82afad6a82	{"action":"token_refreshed","actor_id":"24c65c17-c785-43ba-9f1e-806f1e509a28","actor_username":"hula123@gmail.com","actor_via_sso":false,"log_type":"token"}	2025-02-18 20:09:38.937985+00	
+00000000-0000-0000-0000-000000000000	443d6505-ef40-46a0-9f11-5ca60d016fd9	{"action":"token_refreshed","actor_id":"24c65c17-c785-43ba-9f1e-806f1e509a28","actor_username":"hula123@gmail.com","actor_via_sso":false,"log_type":"token"}	2025-02-18 20:10:07.031518+00	
+00000000-0000-0000-0000-000000000000	05747d40-7eb6-450a-80c1-f0c25ea6c0c4	{"action":"user_signedup","actor_id":"e6c33c07-c230-4920-9bfc-28b17a03b654","actor_username":"brand@brand.com","actor_via_sso":false,"log_type":"team","traits":{"provider":"email"}}	2025-02-18 20:11:30.452721+00	
+00000000-0000-0000-0000-000000000000	f12490e6-1b78-40f6-afd9-d1d40ce63988	{"action":"login","actor_id":"e6c33c07-c230-4920-9bfc-28b17a03b654","actor_username":"brand@brand.com","actor_via_sso":false,"log_type":"account","traits":{"provider":"email"}}	2025-02-18 20:11:30.462291+00	
+00000000-0000-0000-0000-000000000000	e603bb54-0965-4cdb-ba34-72e5775b4b59	{"action":"logout","actor_id":"e6c33c07-c230-4920-9bfc-28b17a03b654","actor_username":"brand@brand.com","actor_via_sso":false,"log_type":"account"}	2025-02-18 20:11:30.751442+00	
+00000000-0000-0000-0000-000000000000	4605e231-6f14-474c-8756-c4b78d2b4f4f	{"action":"user_repeated_signup","actor_id":"e6c33c07-c230-4920-9bfc-28b17a03b654","actor_username":"brand@brand.com","actor_via_sso":false,"log_type":"user","traits":{"provider":"email"}}	2025-02-18 20:14:05.153942+00	
+00000000-0000-0000-0000-000000000000	c0efaced-f672-4427-bb5a-e4ac4bb69c39	{"action":"login","actor_id":"e6c33c07-c230-4920-9bfc-28b17a03b654","actor_username":"brand@brand.com","actor_via_sso":false,"log_type":"account","traits":{"provider":"email"}}	2025-02-18 20:14:43.338531+00	
+00000000-0000-0000-0000-000000000000	62158e7f-ed6e-4445-bca0-0352d35c1008	{"action":"logout","actor_id":"e6c33c07-c230-4920-9bfc-28b17a03b654","actor_username":"brand@brand.com","actor_via_sso":false,"log_type":"account"}	2025-02-18 20:46:16.044711+00	
+00000000-0000-0000-0000-000000000000	ed61e7ac-d4ea-4e1b-b11a-4defc2cf4501	{"action":"user_signedup","actor_id":"cc8a6220-2840-4d86-bf7a-4d87ea93fbb8","actor_username":"buba@buba.com","actor_via_sso":false,"log_type":"team","traits":{"provider":"email"}}	2025-02-18 20:49:09.324625+00	
+00000000-0000-0000-0000-000000000000	5208bf7f-f7f9-4ddb-964a-74cdcc571b24	{"action":"login","actor_id":"cc8a6220-2840-4d86-bf7a-4d87ea93fbb8","actor_username":"buba@buba.com","actor_via_sso":false,"log_type":"account","traits":{"provider":"email"}}	2025-02-18 20:49:09.331714+00	
+00000000-0000-0000-0000-000000000000	6c7b2638-57d3-478c-984c-55a6ce834064	{"action":"logout","actor_id":"cc8a6220-2840-4d86-bf7a-4d87ea93fbb8","actor_username":"buba@buba.com","actor_via_sso":false,"log_type":"account"}	2025-02-18 20:50:03.287086+00	
+00000000-0000-0000-0000-000000000000	8ab64cb5-5961-4390-b67b-ebf1e4a7afbb	{"action":"login","actor_id":"e6c33c07-c230-4920-9bfc-28b17a03b654","actor_username":"brand@brand.com","actor_via_sso":false,"log_type":"account","traits":{"provider":"email"}}	2025-02-18 20:50:15.989874+00	
 \.
 
 
@@ -42,7 +75,13 @@ COPY "auth"."flow_state" ("id", "user_id", "auth_code", "code_challenge_method",
 --
 
 COPY "auth"."users" ("instance_id", "id", "aud", "role", "email", "encrypted_password", "email_confirmed_at", "invited_at", "confirmation_token", "confirmation_sent_at", "recovery_token", "recovery_sent_at", "email_change_token_new", "email_change", "email_change_sent_at", "last_sign_in_at", "raw_app_meta_data", "raw_user_meta_data", "is_super_admin", "created_at", "updated_at", "phone", "phone_confirmed_at", "phone_change", "phone_change_token", "phone_change_sent_at", "email_change_token_current", "email_change_confirm_status", "banned_until", "reauthentication_token", "reauthentication_sent_at", "is_sso_user", "deleted_at", "is_anonymous", "onboarding_completed") FROM stdin;
-00000000-0000-0000-0000-000000000000	0d535dca-5466-4bd6-8f44-2c5c6fc74464	authenticated	authenticated	shivam@sharksmarketing.com	$2a$10$y.NKsGgTu7qE5.IY/UGphOATC1VSl6FBBkprrDOMrq1tKSvo5QjRa	2025-02-18 00:23:16.895782+00	\N		\N		\N			\N	2025-02-18 00:23:16.909808+00	{"provider": "email", "providers": ["email"]}	{"sub": "0d535dca-5466-4bd6-8f44-2c5c6fc74464", "email": "shivam@sharksmarketing.com", "email_verified": true, "phone_verified": false}	\N	2025-02-18 00:23:16.837143+00	2025-02-18 00:23:16.94262+00	\N	\N			\N		0	\N		\N	f	\N	f	f
+00000000-0000-0000-0000-000000000000	0ff5e996-5811-481b-be81-fe3338dfaab6	authenticated	brand	hoola123@gmail.com	$2a$10$D1/q8SwiJsSmylMInB4LZ.BTByij0G/gOi6yq3ynfd18ksd08txj.	2025-02-18 16:46:29.352582+00	\N		\N		\N			\N	2025-02-18 16:47:14.754701+00	{"provider": "email", "providers": ["email"]}	{"sub": "0ff5e996-5811-481b-be81-fe3338dfaab6", "email": "hoola123@gmail.com", "brand_name": "Hoola", "email_verified": true, "phone_verified": false}	\N	2025-02-18 16:46:29.338875+00	2025-02-18 16:47:14.756372+00	\N	\N			\N		0	\N		\N	f	\N	f	f
+00000000-0000-0000-0000-000000000000	e9b94f74-5084-43b8-996c-3ce68d96290b	authenticated	brand	guppa123@gmail.com	$2a$10$4LiH7pjkdV4vr939d4ISC.uZ87D.BTvxGGSOuJhb6.P.GT.66FQdO	2025-02-18 16:55:17.104351+00	\N		\N		\N			\N	2025-02-18 16:55:17.108522+00	{"provider": "email", "providers": ["email"]}	{"sub": "e9b94f74-5084-43b8-996c-3ce68d96290b", "email": "guppa123@gmail.com", "brand_name": "guppa", "email_verified": true, "phone_verified": false}	\N	2025-02-18 16:55:17.089737+00	2025-02-18 16:55:17.111912+00	\N	\N			\N		0	\N		\N	f	\N	f	f
+00000000-0000-0000-0000-000000000000	cc8a6220-2840-4d86-bf7a-4d87ea93fbb8	authenticated	authenticated	buba@buba.com	$2a$10$8o/cxXBCW1wClWYg4mrPuOX97t.jW/Tt2Xfbj2HpIX7qiiJ6CYozi	2025-02-18 20:49:09.328492+00	\N		\N		\N			\N	2025-02-18 20:49:09.332285+00	{"provider": "email", "providers": ["email"]}	{"sub": "cc8a6220-2840-4d86-bf7a-4d87ea93fbb8", "email": "buba@buba.com", "user_type": "brand", "brand_name": "buba.com", "email_verified": true, "phone_verified": false}	\N	2025-02-18 20:49:09.308763+00	2025-02-18 20:49:09.336754+00	\N	\N			\N		0	\N		\N	f	\N	f	f
+00000000-0000-0000-0000-000000000000	e6c33c07-c230-4920-9bfc-28b17a03b654	authenticated	brand	brand@brand.com	$2a$10$S4aE1Q05ZqUCYgZw/FkW7.ZDIQFZWIn4uvYkfQZS5lKC1XF0r/FI6	2025-02-18 20:11:30.453403+00	\N		\N		\N			\N	2025-02-18 20:50:15.990741+00	{"provider": "email", "providers": ["email"]}	{"sub": "e6c33c07-c230-4920-9bfc-28b17a03b654", "email": "brand@brand.com", "user_type": "brand", "brand_name": "brand", "email_verified": true, "phone_verified": false}	\N	2025-02-18 20:11:30.441402+00	2025-02-18 20:50:15.992616+00	\N	\N			\N		0	\N		\N	f	\N	f	f
+00000000-0000-0000-0000-000000000000	24c65c17-c785-43ba-9f1e-806f1e509a28	authenticated	brand	hula123@gmail.com	$2a$10$7rFgleXv3G3K3EYnqZk6fO4lmBQJJuaO1lpFygAmXrxM9vdfY1Pgu	2025-02-18 16:50:10.901068+00	\N		\N		\N			\N	2025-02-18 16:50:10.904821+00	{"provider": "email", "providers": ["email"]}	{"sub": "24c65c17-c785-43ba-9f1e-806f1e509a28", "email": "hula123@gmail.com", "brand_name": "hoola baby", "email_verified": true, "phone_verified": false}	\N	2025-02-18 16:50:10.893409+00	2025-02-18 20:08:59.316582+00	\N	\N			\N		0	\N		\N	f	\N	f	f
+00000000-0000-0000-0000-000000000000	d49d26dc-ed4f-451a-83f5-8bed9ff336cf	authenticated	brand	9.shivamgupta.6@gmail.com	$2a$10$lCgbN9s.JiWgRrHpEdr/8edlIWQjCftCgf1mEnmmBOzHFuDrzpIRG	2025-02-18 15:37:21.13524+00	\N		\N		\N			\N	2025-02-18 15:37:21.140462+00	{"provider": "email", "providers": ["email"]}	{"sub": "d49d26dc-ed4f-451a-83f5-8bed9ff336cf", "email": "9.shivamgupta.6@gmail.com", "brand_name": "Shivam Gupta", "email_verified": true, "phone_verified": false}	\N	2025-02-18 15:37:21.113213+00	2025-02-18 15:37:21.144701+00	\N	\N			\N		0	\N		\N	f	\N	f	f
+00000000-0000-0000-0000-000000000000	0d535dca-5466-4bd6-8f44-2c5c6fc74464	authenticated	brand	shivam@sharksmarketing.com	$2a$10$y.NKsGgTu7qE5.IY/UGphOATC1VSl6FBBkprrDOMrq1tKSvo5QjRa	2025-02-18 00:23:16.895782+00	\N		\N		\N			\N	2025-02-18 15:58:45.377178+00	{"provider": "email", "providers": ["email"]}	{"sub": "0d535dca-5466-4bd6-8f44-2c5c6fc74464", "email": "shivam@sharksmarketing.com", "email_verified": true, "phone_verified": false}	\N	2025-02-18 00:23:16.837143+00	2025-02-18 15:58:45.379781+00	\N	\N			\N		0	\N		\N	f	\N	f	f
 \.
 
 
@@ -52,6 +91,12 @@ COPY "auth"."users" ("instance_id", "id", "aud", "role", "email", "encrypted_pas
 
 COPY "auth"."identities" ("provider_id", "user_id", "identity_data", "provider", "last_sign_in_at", "created_at", "updated_at", "id") FROM stdin;
 0d535dca-5466-4bd6-8f44-2c5c6fc74464	0d535dca-5466-4bd6-8f44-2c5c6fc74464	{"sub": "0d535dca-5466-4bd6-8f44-2c5c6fc74464", "email": "shivam@sharksmarketing.com", "email_verified": false, "phone_verified": false}	email	2025-02-18 00:23:16.873841+00	2025-02-18 00:23:16.873893+00	2025-02-18 00:23:16.873893+00	58089d3c-6c7a-4f30-91f5-8255f08d2879
+d49d26dc-ed4f-451a-83f5-8bed9ff336cf	d49d26dc-ed4f-451a-83f5-8bed9ff336cf	{"sub": "d49d26dc-ed4f-451a-83f5-8bed9ff336cf", "email": "9.shivamgupta.6@gmail.com", "brand_name": "Shivam Gupta", "email_verified": false, "phone_verified": false}	email	2025-02-18 15:37:21.12645+00	2025-02-18 15:37:21.126515+00	2025-02-18 15:37:21.126515+00	f2328291-fd1d-431d-88b6-725aab01ab05
+0ff5e996-5811-481b-be81-fe3338dfaab6	0ff5e996-5811-481b-be81-fe3338dfaab6	{"sub": "0ff5e996-5811-481b-be81-fe3338dfaab6", "email": "hoola123@gmail.com", "brand_name": "Hoola", "email_verified": false, "phone_verified": false}	email	2025-02-18 16:46:29.347763+00	2025-02-18 16:46:29.347827+00	2025-02-18 16:46:29.347827+00	39ab29a5-61e2-4f9e-a25d-6c3ff894fd5f
+24c65c17-c785-43ba-9f1e-806f1e509a28	24c65c17-c785-43ba-9f1e-806f1e509a28	{"sub": "24c65c17-c785-43ba-9f1e-806f1e509a28", "email": "hula123@gmail.com", "brand_name": "hoola baby", "email_verified": false, "phone_verified": false}	email	2025-02-18 16:50:10.897617+00	2025-02-18 16:50:10.897665+00	2025-02-18 16:50:10.897665+00	6848b298-ea98-424a-b970-3f0b2b2d5b87
+e9b94f74-5084-43b8-996c-3ce68d96290b	e9b94f74-5084-43b8-996c-3ce68d96290b	{"sub": "e9b94f74-5084-43b8-996c-3ce68d96290b", "email": "guppa123@gmail.com", "brand_name": "guppa", "email_verified": false, "phone_verified": false}	email	2025-02-18 16:55:17.097156+00	2025-02-18 16:55:17.097217+00	2025-02-18 16:55:17.097217+00	81c089cd-4c11-42a4-871c-9cede0326905
+e6c33c07-c230-4920-9bfc-28b17a03b654	e6c33c07-c230-4920-9bfc-28b17a03b654	{"sub": "e6c33c07-c230-4920-9bfc-28b17a03b654", "email": "brand@brand.com", "user_type": "brand", "brand_name": "brand", "email_verified": false, "phone_verified": false}	email	2025-02-18 20:11:30.44923+00	2025-02-18 20:11:30.44928+00	2025-02-18 20:11:30.44928+00	6c68568c-7a8d-4301-8e21-eff42f68ee25
+cc8a6220-2840-4d86-bf7a-4d87ea93fbb8	cc8a6220-2840-4d86-bf7a-4d87ea93fbb8	{"sub": "cc8a6220-2840-4d86-bf7a-4d87ea93fbb8", "email": "buba@buba.com", "user_type": "brand", "brand_name": "buba.com", "email_verified": false, "phone_verified": false}	email	2025-02-18 20:49:09.319326+00	2025-02-18 20:49:09.319375+00	2025-02-18 20:49:09.319375+00	1a8b6f08-e86c-420d-8a14-b35e1b2147a9
 \.
 
 
@@ -68,6 +113,9 @@ COPY "auth"."instances" ("id", "uuid", "raw_base_config", "created_at", "updated
 --
 
 COPY "auth"."sessions" ("id", "user_id", "created_at", "updated_at", "factor_id", "aal", "not_after", "refreshed_at", "user_agent", "ip", "tag") FROM stdin;
+54cabd2c-c117-455d-9af3-3d81b84d1479	e9b94f74-5084-43b8-996c-3ce68d96290b	2025-02-18 16:55:17.108612+00	2025-02-18 16:55:17.108612+00	\N	aal1	\N	\N	Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36	171.50.233.161	\N
+0389d37d-d503-4dab-a7f4-372e629c1b80	24c65c17-c785-43ba-9f1e-806f1e509a28	2025-02-18 16:50:10.904889+00	2025-02-18 20:10:07.032728+00	\N	aal1	\N	2025-02-18 20:10:07.032652	node	171.50.233.161	\N
+c9824ff6-578c-4dc3-b01e-e1a6bc402d7a	e6c33c07-c230-4920-9bfc-28b17a03b654	2025-02-18 20:50:15.990818+00	2025-02-18 20:50:15.990818+00	\N	aal1	\N	\N	Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36	171.50.233.161	\N
 \.
 
 
@@ -76,6 +124,9 @@ COPY "auth"."sessions" ("id", "user_id", "created_at", "updated_at", "factor_id"
 --
 
 COPY "auth"."mfa_amr_claims" ("session_id", "created_at", "updated_at", "authentication_method", "id") FROM stdin;
+0389d37d-d503-4dab-a7f4-372e629c1b80	2025-02-18 16:50:10.908368+00	2025-02-18 16:50:10.908368+00	password	1368d028-f790-4873-93ea-ceffd70112a5
+54cabd2c-c117-455d-9af3-3d81b84d1479	2025-02-18 16:55:17.112424+00	2025-02-18 16:55:17.112424+00	password	3029e9ab-54b8-4282-8cab-e09bfc71ad3d
+c9824ff6-578c-4dc3-b01e-e1a6bc402d7a	2025-02-18 20:50:15.992942+00	2025-02-18 20:50:15.992942+00	password	97f0d057-ac8d-45a2-b0ea-50df3f98d8d4
 \.
 
 
@@ -108,6 +159,10 @@ COPY "auth"."one_time_tokens" ("id", "user_id", "token_type", "token_hash", "rel
 --
 
 COPY "auth"."refresh_tokens" ("instance_id", "id", "token", "user_id", "revoked", "created_at", "updated_at", "parent", "session_id") FROM stdin;
+00000000-0000-0000-0000-000000000000	9	mPXB6qIuEYGYNcdk0UjC_w	e9b94f74-5084-43b8-996c-3ce68d96290b	f	2025-02-18 16:55:17.110585+00	2025-02-18 16:55:17.110585+00	\N	54cabd2c-c117-455d-9af3-3d81b84d1479
+00000000-0000-0000-0000-000000000000	8	j1p2s8vIGH8kJHa2wbC0Ug	24c65c17-c785-43ba-9f1e-806f1e509a28	t	2025-02-18 16:50:10.905865+00	2025-02-18 20:08:59.293956+00	\N	0389d37d-d503-4dab-a7f4-372e629c1b80
+00000000-0000-0000-0000-000000000000	10	Ky4wbO_OfZbaEeqevDCXXw	24c65c17-c785-43ba-9f1e-806f1e509a28	f	2025-02-18 20:08:59.311516+00	2025-02-18 20:08:59.311516+00	j1p2s8vIGH8kJHa2wbC0Ug	0389d37d-d503-4dab-a7f4-372e629c1b80
+00000000-0000-0000-0000-000000000000	14	FeRE_8GyjbdWBaCK9Zm7SA	e6c33c07-c230-4920-9bfc-28b17a03b654	f	2025-02-18 20:50:15.991674+00	2025-02-18 20:50:15.991674+00	\N	c9824ff6-578c-4dc3-b01e-e1a6bc402d7a
 \.
 
 
@@ -173,6 +228,8 @@ fbb94ab6-7ce3-42e8-899b-4413f8077418	valid	2025-02-14 16:48:34.231832+00	\N	aead
 --
 
 COPY "public"."users" ("id", "auth_user_id", "user_type", "created_at", "status", "onboarding_completed") FROM stdin;
+2	e6c33c07-c230-4920-9bfc-28b17a03b654	brand	2025-02-18 20:16:22.863195+00	active	t
+3	cc8a6220-2840-4d86-bf7a-4d87ea93fbb8	brand	2025-02-18 20:49:09.477685+00	active	f
 \.
 
 
@@ -189,6 +246,7 @@ COPY "public"."admin_profiles" ("id", "first_name", "last_name", "phone_number",
 --
 
 COPY "public"."brand_profiles" ("id", "brand_name", "company_name", "contact_person", "phone_number", "email", "accounts_email", "website", "gst_number", "business_address", "city", "state", "postal_code", "brand_logo_url", "payment_terms", "razorpay_va_id", "razorpay_va_number", "razorpay_va_ifsc", "razorpay_va_upi_id", "zoho_books_id", "created_at", "profile_id", "admin_approved", "tds_rate") FROM stdin;
+6	brand	@brand.com	PErson	8699699866	vhjs@hdhd.com	tutu@jfdkd.vom	https://dffd.vid	10BSDPG0911J1ZF	fhgfgfg	fdhfhhfd	fdhfdh	454454	\N	net_30	\N	\N	\N	\N	\N	2025-02-18 20:26:44.564326	2	f	0.00
 \.
 
 
@@ -481,7 +539,7 @@ e44b0bef-78cf-460b-8dc9-e3c84ca0c4bd	SUPABASE_EDGE_FUNCTION_URL	Dummy Edge Funct
 -- Name: refresh_tokens_id_seq; Type: SEQUENCE SET; Schema: auth; Owner: supabase_auth_admin
 --
 
-SELECT pg_catalog.setval('"auth"."refresh_tokens_id_seq"', 1, true);
+SELECT pg_catalog.setval('"auth"."refresh_tokens_id_seq"', 14, true);
 
 
 --
@@ -502,7 +560,7 @@ SELECT pg_catalog.setval('"public"."admin_profiles_id_seq"', 1, false);
 -- Name: brand_profiles_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
 --
 
-SELECT pg_catalog.setval('"public"."brand_profiles_id_seq"', 1, false);
+SELECT pg_catalog.setval('"public"."brand_profiles_id_seq"', 6, true);
 
 
 --
@@ -642,7 +700,7 @@ SELECT pg_catalog.setval('"public"."products_id_seq"', 1, false);
 -- Name: profiles_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
 --
 
-SELECT pg_catalog.setval('"public"."profiles_id_seq"', 1, false);
+SELECT pg_catalog.setval('"public"."profiles_id_seq"', 3, true);
 
 
 --
