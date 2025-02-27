@@ -3947,12 +3947,6 @@ GRANT USAGE ON SCHEMA "public" TO "service_role";
 
 
 
-
-
-
-
-
-
 GRANT ALL ON FUNCTION "public"."allocate_payment_to_invoices"("payment_id" bigint, "brand_id" bigint, "payment_amount" numeric) TO "anon";
 GRANT ALL ON FUNCTION "public"."allocate_payment_to_invoices"("payment_id" bigint, "brand_id" bigint, "payment_amount" numeric) TO "authenticated";
 GRANT ALL ON FUNCTION "public"."allocate_payment_to_invoices"("payment_id" bigint, "brand_id" bigint, "payment_amount" numeric) TO "service_role";
